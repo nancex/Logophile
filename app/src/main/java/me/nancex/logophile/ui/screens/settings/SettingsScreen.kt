@@ -1,6 +1,8 @@
 package me.nancex.logophile.ui.screens.settings
 
 import android.app.Activity
+import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,9 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import android.util.Log
 import kotlinx.coroutines.launch
 import me.nancex.logophile.R
 import me.nancex.logophile.ui.theme.AppFont
@@ -68,10 +68,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(scrollState)
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(scrollState)
         ) {
             SettingsSectionTitle(title = stringResource(R.string.settings_font))
 
@@ -81,6 +78,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                         AppFont.DEFAULT -> stringResource(R.string.font_default)
                         AppFont.SERIF -> stringResource(R.string.font_serif)
                         AppFont.MONOSPACE -> stringResource(R.string.font_monospace)
+                        AppFont.EIGHT_BIT -> stringResource(R.string.font_8bit)
                     },
                     selected = font == fontOption,
                     onClick = { scope.launch { settingsManager.setFont(fontOption) } }
@@ -107,7 +105,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                                 AppLanguage.ENGLISH -> LocaleListCompat.forLanguageTags("en-US")
                             }
                             AppCompatDelegate.setApplicationLocales(locale)
-                            // Force Activity recreate to apply locale immediately
+                            Log.d("SettingsScreen", "language changed to ${lang.code}, recreating activity")
                             activity?.recreate()
                         }
                     }
@@ -150,9 +148,7 @@ fun SettingsSectionTitle(title: String) {
 @Composable
 fun SettingsRadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -160,4 +156,3 @@ fun SettingsRadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
         RadioButton(selected = selected, onClick = onClick)
     }
 }
-

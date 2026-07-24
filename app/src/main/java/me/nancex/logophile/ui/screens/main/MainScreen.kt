@@ -74,7 +74,7 @@ fun MainScreen(
                         font = font,
                         repository = repository
                     )
-                    BottomNavTab.WORD_BANK -> WordBankContent(viewModel = viewModel)
+                    BottomNavTab.WORD_BANK -> WordBankContent(viewModel = viewModel, font = font)
                 }
             }
         }
@@ -91,3 +91,4 @@ fun MainScreen(
         )
     }
 }
+

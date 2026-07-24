@@ -3,8 +3,8 @@ package me.nancex.logophile.ui.screens.main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,9 +29,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import me.nancex.logophile.R
 import me.nancex.logophile.data.repository.WordRepository
@@ -72,15 +77,19 @@ fun MemoryContent(
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onPass() }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 120.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
         ) {
-            Text(text = word.word,
-                style = MaterialTheme.typography.displayLarge.copy(fontFamily = wordFont),
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center)
+            AutoSizeWord(
+                text = word.word,
+                fontFamily = wordFont,
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
 
             if (state.isShowingTip) {
                 Spacer(modifier = Modifier.height(32.dp))
@@ -124,8 +133,9 @@ fun MemoryContent(
 
         Row(
             modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp, start = 24.dp, end = 24.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+                .padding(bottom = 80.dp, start = 24.dp, end = 24.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
@@ -153,5 +163,41 @@ fun MemoryContent(
                     modifier = Modifier.size(24.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun AutoSizeWord(
+    text: String,
+    fontFamily: FontFamily,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val targetStyle = style.copy(fontFamily = fontFamily, color = color, fontWeight = FontWeight.Bold)
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val availableWidthPx = constraints.maxWidth.toFloat()
+        val maxFontSize = targetStyle.fontSize
+
+        var fontSize = maxFontSize
+        val measured = textMeasurer.measure(
+            text = text,
+            style = targetStyle.copy(fontSize = fontSize),
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            constraints = Constraints(maxWidth = Constraints.Infinity)
+        )
+        if (measured.size.width > availableWidthPx && availableWidthPx > 0f) {
+            fontSize = maxFontSize * (availableWidthPx / measured.size.width.toFloat())
+        }
+
+        Text(
+            text = text,
+            style = targetStyle.copy(fontSize = fontSize),
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center
+        )
     }
 }

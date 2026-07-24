@@ -85,7 +85,7 @@ fun LogophileDrawer(
                     Spacer(modifier = Modifier.weight(1f))
 
                     Text(
-                        text = "v1.0.0",
+                        text = "v0.1.0",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.End).padding(16.dp)
@@ -96,3 +96,4 @@ fun LogophileDrawer(
         content = content
     )
 }
+

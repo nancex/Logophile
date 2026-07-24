@@ -34,6 +34,7 @@
     <string name="font_default">Default</string>
     <string name="font_serif">Serif</string>
     <string name="font_monospace">Monospace</string>
+    <string name="font_8bit">8bitoperator</string>
     <string name="lang_chinese">中文</string>
     <string name="lang_english">English</string>
     <string name="theme_light">Light</string>
@@ -52,5 +53,3 @@
     <string name="sort">Sort</string>
     <string name="more">More</string>
 </resources>
-
-

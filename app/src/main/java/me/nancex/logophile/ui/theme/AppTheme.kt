@@ -11,7 +11,8 @@ enum class AppTheme(val labelKey: String) {
 enum class AppFont(val labelKey: String, val displayName: String) {
     DEFAULT("font_default", "Default"),
     SERIF("font_serif", "Serif"),
-    MONOSPACE("font_monospace", "Monospace")
+    MONOSPACE("font_monospace", "Monospace"),
+    EIGHT_BIT("font_8bit", "8bitoperator JVE")
 }
 
 enum class AppLanguage(val labelKey: String, val code: String) {
