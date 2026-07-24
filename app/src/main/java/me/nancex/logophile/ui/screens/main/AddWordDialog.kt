@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -124,20 +123,21 @@ fun AddWordDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                val canAdd = state.hasResult && !state.wasModifiedAfterSearch
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            if (state.hasResult && !state.alreadyExists && !state.wasModifiedAfterSearch) onAdd()
-                            else if (!state.hasResult) { onSearch(); focusManager.clearFocus() }
+                            if (canAdd) onAdd()
+                            else { onSearch(); focusManager.clearFocus() }
                         },
                         enabled = !state.isLoading && !state.alreadyExists && state.input.isNotBlank() &&
-                                (state.hasResult && !state.wasModifiedAfterSearch || !state.hasResult),
+                                (!state.wasModifiedAfterSearch || !state.hasResult),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text(if (state.hasResult && !state.wasModifiedAfterSearch)
-                            stringResource(R.string.add) else stringResource(R.string.search))
+                        Text(if (canAdd) stringResource(R.string.add) else stringResource(R.string.search))
                     }
                 }
             }

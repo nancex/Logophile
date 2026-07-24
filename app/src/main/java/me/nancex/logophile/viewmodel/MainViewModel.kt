@@ -60,13 +60,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val current = _memoryState.value.currentWord
                 if (current == null && words.isNotEmpty()) {
                     _memoryState.value = _memoryState.value.copy(
-                        currentWord = words.firstOrNull(),
+                        currentWord = words.first(),
                         wordCount = words.size,
                         currentIndex = 0,
                         hasPrevious = false
                     )
                 } else if (current != null && words.none { it.id == current.id }) {
-                    // Current word was deleted - advance to next
                     Log.d(TAG, "collect: current word '${current.word}' deleted, advancing")
                     previousWords.removeAll { it.id == current.id }
                     pickNextWord()
@@ -102,7 +101,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (result != null) {
                 val (phonetic, defJson, audioUrl) = result
                 val defDisplay = repository.parseDefinitionToDisplayText(defJson)
-                val hasResult = phonetic != null || !defDisplay.isNullOrEmpty()
+                val hasResult = phonetic != null || defDisplay.isNotEmpty()
                 _addWordState.value = _addWordState.value.copy(
                     isLoading = false, phonetic = phonetic, definitionJson = defJson,
                     definitionDisplay = defDisplay, audioUrl = audioUrl,
@@ -166,12 +165,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 hasPrevious = previousWords.isNotEmpty(), isRevisit = false)
             return
         }
-        val currentIndex = _memoryState.value.currentIndex
-        val nextIndex = (currentIndex + 1) % wordList.size.coerceAtLeast(1)
+        val nextIndex = (_memoryState.value.currentIndex + 1) % wordList.size
         _memoryState.value = _memoryState.value.copy(
-            currentWord = wordList[nextIndex.coerceIn(0, wordList.lastIndex)],
+            currentWord = wordList[nextIndex],
             isShowingTip = false,
-            currentIndex = nextIndex.coerceIn(0, wordList.lastIndex),
+            currentIndex = nextIndex,
             hasPrevious = previousWords.isNotEmpty(),
             isRevisit = false)
     }

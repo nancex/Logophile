@@ -57,13 +57,9 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
-                        // Force WAL checkpoint so all data is in the main .db file
                         app.repository.checkpointBeforeExport(context)
                         val dbFile = context.getDatabasePath("logophile_database")
                         Log.d("ImportExport", "export: dbFile path=${dbFile.absolutePath}, size=${dbFile.length()}")
-                        val walFile = File(dbFile.absolutePath + "-wal")
-                        val shmFile = File(dbFile.absolutePath + "-shm")
-                        Log.d("ImportExport", "export: wal exists=${walFile.exists()} shm exists=${shmFile.exists()}")
                         context.contentResolver.openOutputStream(it)?.use { output ->
                             FileInputStream(dbFile).use { input -> input.copyTo(output) }
                         }

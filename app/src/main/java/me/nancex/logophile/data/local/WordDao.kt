@@ -34,17 +34,11 @@ interface WordDao {
     @Query("SELECT * FROM words WHERE word LIKE :query || '%' ORDER BY word COLLATE NOCASE ASC")
     fun searchWordsAlpha(query: String): Flow<List<WordEntry>>
 
-    @Query("SELECT * FROM words WHERE word LIKE :query || '%' ORDER BY added_time DESC")
-    fun searchWordsDate(query: String): Flow<List<WordEntry>>
-
     @Query("SELECT * FROM words WHERE definition LIKE '%' || :query || '%' ORDER BY added_time DESC")
     fun searchByDefinition(query: String): Flow<List<WordEntry>>
 
     @Query("SELECT * FROM words WHERE definition LIKE '%' || :query || '%' ORDER BY word COLLATE NOCASE ASC")
     fun searchByDefinitionAlpha(query: String): Flow<List<WordEntry>>
-
-    @Query("SELECT * FROM words WHERE definition LIKE '%' || :query || '%' ORDER BY added_time DESC")
-    fun searchByDefinitionDate(query: String): Flow<List<WordEntry>>
 
     @Query("SELECT * FROM words WHERE word = :word AND language = :language LIMIT 1")
     suspend fun findByWordAndLanguage(word: String, language: String): WordEntry?
