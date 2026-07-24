@@ -1,6 +1,7 @@
 package me.nancex.logophile.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,9 @@ data class AddWordState(
     val isLoading: Boolean = false,
     val alreadyExists: Boolean = false,
     val hasResult: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val searchedWord: String = "",
+    val wasModifiedAfterSearch: Boolean = false
 )
 
 data class MemoryState(
@@ -34,17 +37,18 @@ data class MemoryState(
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        private const val TAG = "LogophileVM"
+    }
+
     private val repository = (application as LogophileApp).repository
 
-    // Add word state
     private val _addWordState = MutableStateFlow(AddWordState())
     val addWordState: StateFlow<AddWordState> = _addWordState.asStateFlow()
 
-    // Memory state
     private val _memoryState = MutableStateFlow(MemoryState())
     val memoryState: StateFlow<MemoryState> = _memoryState.asStateFlow()
 
-    // All words for memory reviews
     private var wordList: List<WordEntry> = emptyList()
     private var previousWords = mutableListOf<WordEntry>()
     private var revisitIndex = -1
@@ -67,13 +71,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ---- Add Word ----
-
     fun updateAddWordInput(input: String) {
+        val wasModified = _addWordState.value.hasResult &&
+                input != _addWordState.value.searchedWord
         _addWordState.value = _addWordState.value.copy(
             input = input,
             alreadyExists = false,
-            errorMessage = null
+            errorMessage = null,
+            wasModifiedAfterSearch = wasModified
         )
     }
 
@@ -97,7 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     phonetic = null,
                     definitionJson = null,
                     definitionDisplay = emptyList(),
-                    audioUrl = null
+                    audioUrl = null,
+                    searchedWord = word,
+                    wasModifiedAfterSearch = false
                 )
                 return@launch
             }
@@ -115,12 +122,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     definitionDisplay = defDisplay,
                     audioUrl = audioUrl,
                     hasResult = hasResult,
-                    alreadyExists = false
+                    alreadyExists = false,
+                    searchedWord = word,
+                    wasModifiedAfterSearch = false
                 )
             } else {
                 _addWordState.value = _addWordState.value.copy(
                     isLoading = false,
-                    errorMessage = "Failed to fetch word definition. Check network."
+                    errorMessage = "Failed to fetch word definition. Check network.",
+                    searchedWord = "",
+                    wasModifiedAfterSearch = false
                 )
             }
         }
@@ -129,29 +140,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun addWord() {
         val state = _addWordState.value
         val word = state.input.trim()
-        if (word.isBlank() || !state.hasResult || state.alreadyExists) return
+        if (word.isBlank() || !state.hasResult || state.alreadyExists || state.wasModifiedAfterSearch) return
 
         viewModelScope.launch {
-            repository.insertWord(
-                WordEntry(
-                    word = word.lowercase(),
-                    language = "eng",
-                    phonetic = state.phonetic,
-                    definition = state.definitionJson,
-                    audioUrl = state.audioUrl,
-                    addedTime = System.currentTimeMillis()
-                )
+            val newWord = WordEntry(
+                word = word.lowercase(),
+                language = "eng",
+                phonetic = state.phonetic,
+                definition = state.definitionJson,
+                audioUrl = state.audioUrl,
+                addedTime = System.currentTimeMillis()
             )
+            val id = repository.insertWord(newWord)
+            Log.d(TAG, "=== Word Added to DB ===")
+            Log.d(TAG, "  id          = $id")
+            Log.d(TAG, "  language    = ${newWord.language}")
+            Log.d(TAG, "  word        = ${newWord.word}")
+            Log.d(TAG, "  phonetic    = ${newWord.phonetic}")
+            Log.d(TAG, "  definition  = ${newWord.definition}")
+            Log.d(TAG, "  passCount   = ${newWord.passCount}")
+            Log.d(TAG, "  tipCount    = ${newWord.tipCount}")
+            Log.d(TAG, "  addedTime   = ${newWord.addedTime}")
+            Log.d(TAG, "  audioUrl    = ${newWord.audioUrl}")
+            Log.d(TAG, "=======================")
             clearAddWordState()
         }
     }
 
-    // ---- Memory ----
-
     fun passWord() {
         val current = _memoryState.value.currentWord ?: return
         val isRevisit = _memoryState.value.isRevisit
-
         viewModelScope.launch {
             if (!isRevisit) {
                 repository.incrementPassCount(current.id)
@@ -163,26 +181,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showTip() {
         val current = _memoryState.value.currentWord ?: return
-        val isRevisit = _memoryState.value.isRevisit
-
         _memoryState.value = _memoryState.value.copy(isShowingTip = true)
-
         viewModelScope.launch {
-            if (isRevisit) {
-                // Only increment tip_count on revisit if not already tipped
-                repository.incrementTipCount(current.id)
-            } else {
-                repository.incrementTipCount(current.id)
-            }
+            repository.incrementTipCount(current.id)
         }
     }
 
     fun showPrevious() {
         if (previousWords.isEmpty()) return
-
         revisitIndex = previousWords.lastIndex
         val prevWord = previousWords.removeAt(revisitIndex)
-
         _memoryState.value = _memoryState.value.copy(
             currentWord = prevWord,
             isShowingTip = false,
@@ -192,9 +200,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun showNextWord() {
-        val currentIndex = _memoryState.value.currentIndex
-        val nextIndex = (currentIndex + 1) % wordList.size.coerceAtLeast(1)
-
         if (wordList.isEmpty()) {
             _memoryState.value = _memoryState.value.copy(
                 currentWord = null,
@@ -205,7 +210,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             return
         }
-
+        val currentIndex = _memoryState.value.currentIndex
+        val nextIndex = (currentIndex + 1) % wordList.size.coerceAtLeast(1)
         _memoryState.value = _memoryState.value.copy(
             currentWord = wordList[nextIndex.coerceIn(0, wordList.lastIndex)],
             isShowingTip = false,
@@ -215,12 +221,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    // ---- Word Bank ----
-
     fun deleteWord(word: WordEntry) {
         viewModelScope.launch {
             repository.deleteWord(word)
-            // Refresh memory state
             if (_memoryState.value.currentWord?.id == word.id) {
                 showNextWord()
             }

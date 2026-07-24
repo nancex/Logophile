@@ -1,6 +1,7 @@
 package me.nancex.logophile.ui.screens.main
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,10 +24,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.nancex.logophile.viewmodel.AddWordState
@@ -37,6 +43,8 @@ fun AddWordDialog(
     onAdd: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -64,7 +72,14 @@ fun AddWordDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    isError = state.alreadyExists
+                    isError = state.alreadyExists,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            onSearch()
+                            focusManager.clearFocus()
+                        }
+                    )
                 )
 
                 if (state.alreadyExists) {
@@ -143,7 +158,7 @@ fun AddWordDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
+                    horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text("\u53d6\u6d88")
@@ -151,16 +166,20 @@ fun AddWordDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            if (state.hasResult && !state.alreadyExists) {
+                            if (state.hasResult && !state.alreadyExists && !state.wasModifiedAfterSearch) {
                                 onAdd()
                             } else if (!state.hasResult) {
                                 onSearch()
+                                focusManager.clearFocus()
                             }
                         },
-                        enabled = !state.isLoading && !state.alreadyExists && state.input.isNotBlank(),
+                        enabled = !state.isLoading &&
+                                !state.alreadyExists &&
+                                state.input.isNotBlank() &&
+                                (state.hasResult && !state.wasModifiedAfterSearch || !state.hasResult),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text(if (state.hasResult) "\u6dfb\u52a0" else "\u641c\u7d22")
+                        Text(if (state.hasResult && !state.wasModifiedAfterSearch) "\u6dfb\u52a0" else "\u641c\u7d22")
                     }
                 }
             }

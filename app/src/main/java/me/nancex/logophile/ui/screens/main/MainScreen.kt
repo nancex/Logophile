@@ -23,6 +23,7 @@ import me.nancex.logophile.viewmodel.MainViewModel
 
 @Composable
 fun MainScreen(
+    font: AppFont = AppFont.DEFAULT,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     onNavigateToImportExport: () -> Unit,
@@ -69,12 +70,10 @@ fun MainScreen(
                         onPass = { viewModel.passWord() },
                         onShowTip = { viewModel.showTip() },
                         onPrevious = { viewModel.showPrevious() },
-                        font = AppFont.DEFAULT,
+                        font = font,
                         repository = repository
                     )
-                    BottomNavTab.WORD_BANK -> WordBankContent(
-                        viewModel = viewModel
-                    )
+                    BottomNavTab.WORD_BANK -> WordBankContent(viewModel = viewModel)
                 }
             }
         }

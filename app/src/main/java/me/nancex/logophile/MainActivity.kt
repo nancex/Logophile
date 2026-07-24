@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import me.nancex.logophile.ui.navigation.AppNavGraph
+import me.nancex.logophile.ui.theme.AppFont
+import me.nancex.logophile.ui.theme.AppTheme
 import me.nancex.logophile.ui.theme.LogophileTheme
 import me.nancex.logophile.ui.theme.SettingsManager
 
@@ -23,8 +25,8 @@ class MainActivity : ComponentActivity() {
         val settingsManager = SettingsManager(this)
 
         setContent {
-            val theme by settingsManager.themeFlow.collectAsState(initial = me.nancex.logophile.ui.theme.AppTheme.LIGHT)
-            val font by settingsManager.fontFlow.collectAsState(initial = me.nancex.logophile.ui.theme.AppFont.DEFAULT)
+            val theme by settingsManager.themeFlow.collectAsState(initial = AppTheme.LIGHT)
+            val font by settingsManager.fontFlow.collectAsState(initial = AppFont.DEFAULT)
 
             LogophileTheme(theme = theme, font = font) {
                 Surface(
@@ -32,10 +34,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    AppNavGraph(navController = navController)
+                    AppNavGraph(navController = navController, currentFont = font)
                 }
             }
         }
     }
 }
-

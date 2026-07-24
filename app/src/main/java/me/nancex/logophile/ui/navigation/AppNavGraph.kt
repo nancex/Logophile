@@ -8,34 +8,33 @@ import me.nancex.logophile.ui.screens.about.AboutScreen
 import me.nancex.logophile.ui.screens.importexport.ImportExportScreen
 import me.nancex.logophile.ui.screens.main.MainScreen
 import me.nancex.logophile.ui.screens.settings.SettingsScreen
+import me.nancex.logophile.ui.theme.AppFont
 
 @Composable
-fun AppNavGraph(navController: NavHostController) {
+fun AppNavGraph(
+    navController: NavHostController,
+    currentFont: AppFont
+) {
     NavHost(
         navController = navController,
         startDestination = Screen.Main.route
     ) {
         composable(Screen.Main.route) {
             MainScreen(
+                font = currentFont,
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToAbout = { navController.navigate(Screen.About.route) },
                 onNavigateToImportExport = { navController.navigate(Screen.ImportExport.route) }
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            SettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.About.route) {
-            AboutScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            AboutScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.ImportExport.route) {
-            ImportExportScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            ImportExportScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

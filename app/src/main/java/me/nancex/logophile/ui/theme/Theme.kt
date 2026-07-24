@@ -99,9 +99,16 @@ fun LogophileTheme(
         AppTheme.FOREST -> ForestColorScheme
     }
 
+    val wordFont = getWordFontFamily(font)
+    val typography = AppTypography.copy(
+        displayLarge = AppTypography.displayLarge.copy(fontFamily = wordFont),
+        bodyLarge = AppTypography.bodyLarge.copy(fontFamily = FontFamily.Default),
+        bodyMedium = AppTypography.bodyMedium.copy(fontFamily = FontFamily.Default)
+    )
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography,
+        typography = typography,
         content = content
     )
 }
