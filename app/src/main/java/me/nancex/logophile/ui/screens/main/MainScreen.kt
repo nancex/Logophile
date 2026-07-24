@@ -12,8 +12,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import me.nancex.logophile.R
 import me.nancex.logophile.ui.components.BottomNavTab
 import me.nancex.logophile.ui.components.LogophileBottomBar
 import me.nancex.logophile.ui.components.LogophileDrawer
@@ -39,8 +41,7 @@ fun MainScreen(
     val repository = (LocalContext.current.applicationContext as me.nancex.logophile.LogophileApp).repository
 
     LogophileDrawer(
-        drawerState = drawerState,
-        scope = scope,
+        drawerState = drawerState, scope = scope,
         onSettingsClick = onNavigateToSettings,
         onImportExportClick = onNavigateToImportExport,
         onAboutClick = onNavigateToAbout
@@ -49,8 +50,8 @@ fun MainScreen(
             topBar = {
                 LogophileTopBar(
                     title = when (selectedTab) {
-                        BottomNavTab.MEMORY -> "\u8bb0\u5fc6"
-                        BottomNavTab.WORD_BANK -> "\u8bcd\u5e93"
+                        BottomNavTab.MEMORY -> stringResource(R.string.tab_memory)
+                        BottomNavTab.WORD_BANK -> stringResource(R.string.tab_word_bank)
                     },
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
@@ -85,14 +86,8 @@ fun MainScreen(
             state = addWordState,
             onInputChange = { viewModel.updateAddWordInput(it) },
             onSearch = { viewModel.fetchWordDefinition() },
-            onAdd = {
-                viewModel.addWord()
-                showAddWordDialog = false
-            },
-            onDismiss = {
-                viewModel.clearAddWordState()
-                showAddWordDialog = false
-            }
+            onAdd = { viewModel.addWord(); showAddWordDialog = false },
+            onDismiss = { viewModel.clearAddWordState(); showAddWordDialog = false }
         )
     }
 }

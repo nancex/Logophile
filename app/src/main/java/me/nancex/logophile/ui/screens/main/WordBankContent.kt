@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -32,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,16 +52,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.nancex.logophile.R
 import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.repository.WordRepository
 import me.nancex.logophile.viewmodel.MainViewModel
 
-private const val TAG = "LogophileAudio"
+private const val TAG = "WordBankContent"
+
+private enum class SearchMode { BY_WORD, BY_DEFINITION }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,21 +78,20 @@ fun WordBankContent(viewModel: MainViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var showSortMenu by remember { mutableStateOf(false) }
     var alphaOrder by remember { mutableStateOf(true) }
+    var searchMode by remember { mutableStateOf(SearchMode.BY_WORD) }
     var sheetWord by remember { mutableStateOf<WordEntry?>(null) }
     var wordToDelete by remember { mutableStateOf<WordEntry?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("\u641c\u7d22\u5355\u8bcd...") },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
@@ -95,22 +100,59 @@ fun WordBankContent(viewModel: MainViewModel) {
             Spacer(modifier = Modifier.width(8.dp))
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
-                    Icon(Icons.Filled.Sort, contentDescription = "\u6392\u5e8f",
+                    Icon(Icons.Filled.Sort, contentDescription = stringResource(R.string.sort),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                     DropdownMenuItem(
-                        text = { Text("\u5b57\u6bcd\u8868\u987a\u5e8f") },
-                        onClick = { alphaOrder = true; showSortMenu = false })
+                        text = { Text(stringResource(R.string.sort_alpha)) },
+                        onClick = { alphaOrder = true; showSortMenu = false },
+                        trailingIcon = {
+                            if (alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    )
                     DropdownMenuItem(
-                        text = { Text("\u6dfb\u52a0\u65e5\u671f") },
-                        onClick = { alphaOrder = false; showSortMenu = false })
+                        text = { Text(stringResource(R.string.sort_date)) },
+                        onClick = { alphaOrder = false; showSortMenu = false },
+                        trailingIcon = {
+                            if (!alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    )
+
+                    HorizontalDivider()
+
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.search_mode_word)) },
+                        onClick = { searchMode = SearchMode.BY_WORD; showSortMenu = false },
+                        trailingIcon = {
+                            if (searchMode == SearchMode.BY_WORD)
+                                Icon(Icons.Filled.Check, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.search_mode_definition)) },
+                        onClick = { searchMode = SearchMode.BY_DEFINITION; showSortMenu = false },
+                        trailingIcon = {
+                            if (searchMode == SearchMode.BY_DEFINITION)
+                                Icon(Icons.Filled.Check, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary)
+                        }
+                    )
                 }
             }
         }
 
-        val filteredWords = if (searchQuery.isBlank()) words
-            else words.filter { it.word.startsWith(searchQuery, ignoreCase = true) }
+        val filteredWords = if (searchQuery.isBlank()) {
+            words
+        } else if (searchMode == SearchMode.BY_WORD) {
+            words.filter { it.word.startsWith(searchQuery, ignoreCase = true) }
+        } else {
+            words.filter { it.definition?.contains(searchQuery, ignoreCase = true) == true }
+        }
+
         val sortedWords = if (alphaOrder) filteredWords.sortedBy { it.word.lowercase() }
             else filteredWords.sortedByDescending { it.addedTime }
 
@@ -125,7 +167,6 @@ fun WordBankContent(viewModel: MainViewModel) {
         }
     }
 
-    // Bottom sheet
     if (sheetWord != null) {
         ModalBottomSheet(
             onDismissRequest = { sheetWord = null },
@@ -140,12 +181,11 @@ fun WordBankContent(viewModel: MainViewModel) {
         }
     }
 
-    // Delete confirm dialog
     if (wordToDelete != null) {
         AlertDialog(
             onDismissRequest = { wordToDelete = null },
-            title = { Text("\u786e\u8ba4\u5220\u9664") },
-            text = { Text("\u786e\u5b9a\u8981\u5220\u9664\u5355\u8bcd\u300c${wordToDelete!!.word}\u300d\u5417\uff1f") },
+            title = { Text(stringResource(R.string.confirm_delete_title)) },
+            text = { Text(stringResource(R.string.confirm_delete_text, wordToDelete!!.word)) },
             confirmButton = {
                 TextButton(onClick = {
                     val w = wordToDelete!!
@@ -153,12 +193,12 @@ fun WordBankContent(viewModel: MainViewModel) {
                     sheetWord = null
                     wordToDelete = null
                 }) {
-                    Text("\u5220\u9664", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { wordToDelete = null }) {
-                    Text("\u53d6\u6d88")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -199,9 +239,7 @@ fun WordListItem(
     onPlayAudio: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -220,14 +258,19 @@ fun WordListItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!word.audioUrl.isNullOrEmpty()) {
-                    IconButton(onClick = onPlayAudio, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Filled.VolumeUp, contentDescription = "\u64ad\u653e\u53d1\u97f3",
-                            modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.primary)
-                    }
+                // Always reserve space for audio button to keep consistent height
+                IconButton(
+                    onClick = onPlayAudio,
+                    enabled = !word.audioUrl.isNullOrEmpty(),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Filled.VolumeUp, contentDescription = stringResource(R.string.play_audio),
+                        modifier = Modifier.size(22.dp),
+                        tint = if (!word.audioUrl.isNullOrEmpty())
+                            MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
                 }
-                Icon(Icons.Filled.MoreVert, contentDescription = "\u66f4\u591a",
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more),
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -243,29 +286,19 @@ fun WordDetailSheet(
     onPlayAudio: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(24.dp)
-    ) {
-        Text(
-            text = word.word,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+    Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+        Text(text = word.word, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
         if (!word.phonetic.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = word.phonetic,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = word.phonetic, style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!word.audioUrl.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onPlayAudio, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Filled.VolumeUp, contentDescription = "\u64ad\u653e\u53d1\u97f3",
-                            modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Filled.VolumeUp, contentDescription = stringResource(R.string.play_audio),
+                            modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -280,25 +313,16 @@ fun WordDetailSheet(
                     verticalAlignment = Alignment.Top
                 ) {
                     Box(
-                        modifier = Modifier
-                            .padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 2.dp)
                             .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = part,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(text = part, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = means,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Text(text = means, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -315,9 +339,10 @@ fun WordDetailSheet(
         ) {
             Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("\u5220\u9664\u5355\u8bcd")
+            Text(stringResource(R.string.delete_word))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+

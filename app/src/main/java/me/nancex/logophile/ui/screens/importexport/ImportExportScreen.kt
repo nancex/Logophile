@@ -1,5 +1,6 @@
 package me.nancex.logophile.ui.screens.importexport
 
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,11 +31,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.nancex.logophile.LogophileApp
+import me.nancex.logophile.R
+import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
@@ -42,6 +47,7 @@ import java.io.FileOutputStream
 @Composable
 fun ImportExportScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
+    val app = context.applicationContext as LogophileApp
     val scope = rememberCoroutineScope()
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -51,19 +57,24 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
+                        // Force WAL checkpoint so all data is in the main .db file
+                        app.repository.checkpointBeforeExport(context)
                         val dbFile = context.getDatabasePath("logophile_database")
+                        Log.d("ImportExport", "export: dbFile path=${dbFile.absolutePath}, size=${dbFile.length()}")
+                        val walFile = File(dbFile.absolutePath + "-wal")
+                        val shmFile = File(dbFile.absolutePath + "-shm")
+                        Log.d("ImportExport", "export: wal exists=${walFile.exists()} shm exists=${shmFile.exists()}")
                         context.contentResolver.openOutputStream(it)?.use { output ->
-                            FileInputStream(dbFile).use { input ->
-                                input.copyTo(output)
-                            }
+                            FileInputStream(dbFile).use { input -> input.copyTo(output) }
                         }
                     }
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "\u5bfc\u51fa\u6210\u529f", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
+                    Log.e("ImportExport", "export failed: ${e.message}", e)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "\u5bfc\u51fa\u5931\u8d25: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.export_fail, e.message), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -76,20 +87,29 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
         uri?.let {
             scope.launch {
                 try {
+                    var importedCount = 0
                     withContext(Dispatchers.IO) {
-                        val dbFile = context.getDatabasePath("logophile_database")
+                        val tempFile = File(context.cacheDir, "import_temp.db")
+                        Log.d("ImportExport", "import: copying to ${tempFile.absolutePath}")
                         context.contentResolver.openInputStream(it)?.use { input ->
-                            FileOutputStream(dbFile).use { output ->
-                                input.copyTo(output)
-                            }
+                            FileOutputStream(tempFile).use { output -> input.copyTo(output) }
                         }
+                        Log.d("ImportExport", "import: temp file size=${tempFile.length()}")
+                        importedCount = app.repository.importFromFile(context, tempFile.absolutePath)
+                        tempFile.delete()
                     }
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "\u5bfc\u5165\u6210\u529f\uff0c\u8bf7\u91cd\u542f\u5e94\u7528", Toast.LENGTH_SHORT).show()
+                        Log.d("ImportExport", "import: complete, imported $importedCount words")
+                        Toast.makeText(context,
+                            context.getString(R.string.import_success_count, importedCount),
+                            Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
+                    Log.e("ImportExport", "import failed: ${e.message}", e)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "\u5bfc\u5165\u5931\u8d25: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context,
+                            context.getString(R.string.import_fail, e.message),
+                            Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -99,28 +119,23 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("\u5bfc\u5165\u5bfc\u51fa") },
+                title = { Text(stringResource(R.string.import_export_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "\u8fd4\u56de")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Button(
@@ -130,12 +145,10 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
                     ) {
                         Icon(Icons.Filled.FileUpload, contentDescription = null)
                         Spacer(modifier = Modifier.weight(1f))
-                        Text("\u5bfc\u51fa\u8bcd\u5e93 (.db)", fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.export_db), fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.weight(1f))
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
                     Button(
                         onClick = { importLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
                         modifier = Modifier.fillMaxWidth(),
@@ -147,7 +160,7 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
                     ) {
                         Icon(Icons.Filled.FileDownload, contentDescription = null)
                         Spacer(modifier = Modifier.weight(1f))
-                        Text("\u5bfc\u5165\u8bcd\u5e93 (.db)", fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.import_db), fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }

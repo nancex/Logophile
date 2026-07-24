@@ -1,5 +1,6 @@
 package me.nancex.logophile.ui.screens.settings
 
+import android.app.Activity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,9 +30,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import android.util.Log
 import kotlinx.coroutines.launch
+import me.nancex.logophile.R
 import me.nancex.logophile.ui.theme.AppFont
 import me.nancex.logophile.ui.theme.AppLanguage
 import me.nancex.logophile.ui.theme.AppTheme
@@ -39,19 +47,21 @@ import me.nancex.logophile.ui.theme.SettingsManager
 @Composable
 fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
+    val activity = context as? Activity
     val settingsManager = remember { SettingsManager(context) }
     val theme by settingsManager.themeFlow.collectAsState(initial = AppTheme.LIGHT)
     val font by settingsManager.fontFlow.collectAsState(initial = AppFont.DEFAULT)
     val language by settingsManager.languageFlow.collectAsState(initial = AppLanguage.CHINESE)
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("\u8bbe\u7f6e") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "\u8fd4\u56de")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -61,33 +71,45 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(scrollState)
         ) {
-            SettingsSectionTitle(title = "\u5355\u8bcd\u5b57\u4f53")
+            SettingsSectionTitle(title = stringResource(R.string.settings_font))
 
             AppFont.entries.forEach { fontOption ->
                 SettingsRadioRow(
-                    label = fontOption.displayName,
+                    label = when (fontOption) {
+                        AppFont.DEFAULT -> stringResource(R.string.font_default)
+                        AppFont.SERIF -> stringResource(R.string.font_serif)
+                        AppFont.MONOSPACE -> stringResource(R.string.font_monospace)
+                    },
                     selected = font == fontOption,
-                    onClick = {
-                        scope.launch { settingsManager.setFont(fontOption) }
-                    }
+                    onClick = { scope.launch { settingsManager.setFont(fontOption) } }
                 )
             }
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(modifier = Modifier.height(8.dp))
 
-            SettingsSectionTitle(title = "\u754c\u9762\u8bed\u8a00")
+            SettingsSectionTitle(title = stringResource(R.string.settings_language))
 
             AppLanguage.entries.forEach { lang ->
                 SettingsRadioRow(
                     label = when (lang) {
-                        AppLanguage.CHINESE -> "\u4e2d\u6587"
-                        AppLanguage.ENGLISH -> "English"
+                        AppLanguage.CHINESE -> stringResource(R.string.lang_chinese)
+                        AppLanguage.ENGLISH -> stringResource(R.string.lang_english)
                     },
                     selected = language == lang,
                     onClick = {
-                        scope.launch { settingsManager.setLanguage(lang) }
+                        scope.launch {
+                            settingsManager.setLanguage(lang)
+                            val locale = when (lang) {
+                                AppLanguage.CHINESE -> LocaleListCompat.forLanguageTags("zh-CN")
+                                AppLanguage.ENGLISH -> LocaleListCompat.forLanguageTags("en-US")
+                            }
+                            AppCompatDelegate.setApplicationLocales(locale)
+                            // Force Activity recreate to apply locale immediately
+                            activity?.recreate()
+                        }
                     }
                 )
             }
@@ -95,21 +117,19 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(modifier = Modifier.height(8.dp))
 
-            SettingsSectionTitle(title = "\u4e3b\u9898")
+            SettingsSectionTitle(title = stringResource(R.string.settings_theme))
 
             AppTheme.entries.forEach { themeOption ->
                 SettingsRadioRow(
                     label = when (themeOption) {
-                        AppTheme.LIGHT -> "\u767d\u5929"
-                        AppTheme.DARK -> "\u9ed1\u591c"
-                        AppTheme.OCEAN -> "\u6d77\u6d0b\u84dd"
-                        AppTheme.ROSE -> "\u73ab\u7470\u7c89"
-                        AppTheme.FOREST -> "\u68ee\u6797\u7eff"
+                        AppTheme.LIGHT -> stringResource(R.string.theme_light)
+                        AppTheme.DARK -> stringResource(R.string.theme_dark)
+                        AppTheme.OCEAN -> stringResource(R.string.theme_ocean)
+                        AppTheme.ROSE -> stringResource(R.string.theme_rose)
+                        AppTheme.FOREST -> stringResource(R.string.theme_forest)
                     },
                     selected = theme == themeOption,
-                    onClick = {
-                        scope.launch { settingsManager.setTheme(themeOption) }
-                    }
+                    onClick = { scope.launch { settingsManager.setTheme(themeOption) } }
                 )
             }
         }
@@ -128,11 +148,7 @@ fun SettingsSectionTitle(title: String) {
 }
 
 @Composable
-fun SettingsRadioRow(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
+fun SettingsRadioRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,11 +156,8 @@ fun SettingsRadioRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
+        Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         RadioButton(selected = selected, onClick = onClick)
     }
 }
+

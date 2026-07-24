@@ -25,5 +25,13 @@ abstract class AppDatabase : RoomDatabase() {
                 instance
             }
         }
+
+        fun openExternalDatabase(context: Context, filePath: String): AppDatabase {
+            return Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                filePath
+            ).build()
+        }
     }
 }

@@ -24,10 +24,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import me.nancex.logophile.R
 
 @Composable
 fun LogophileDrawer(
@@ -42,64 +44,41 @@ fun LogophileDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(300.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxHeight().width(300.dp)) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
+                        modifier = Modifier.fillMaxWidth().height(160.dp)
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Logophile",
+                        Text(text = "Logophile",
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                            color = MaterialTheme.colorScheme.onPrimary)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     NavigationDrawerItem(
-                        icon = {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                        },
-                        label = { Text("Settings") },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                        label = { Text(stringResource(R.string.drawer_settings)) },
                         selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onSettingsClick()
-                        },
+                        onClick = { scope.launch { drawerState.close() }; onSettingsClick() },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
                     NavigationDrawerItem(
-                        icon = {
-                            Icon(Icons.Filled.IosShare, contentDescription = "Import/Export")
-                        },
-                        label = { Text("Import/Export") },
+                        icon = { Icon(Icons.Filled.IosShare, contentDescription = null) },
+                        label = { Text(stringResource(R.string.drawer_import_export)) },
                         selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onImportExportClick()
-                        },
+                        onClick = { scope.launch { drawerState.close() }; onImportExportClick() },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
                     NavigationDrawerItem(
-                        icon = {
-                            Icon(Icons.Filled.Info, contentDescription = "About")
-                        },
-                        label = { Text("About") },
+                        icon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                        label = { Text(stringResource(R.string.drawer_about)) },
                         selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onAboutClick()
-                        },
+                        onClick = { scope.launch { drawerState.close() }; onAboutClick() },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
@@ -109,9 +88,7 @@ fun LogophileDrawer(
                         text = "v1.0.0",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .padding(16.dp)
+                        modifier = Modifier.align(Alignment.End).padding(16.dp)
                     )
                 }
             }

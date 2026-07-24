@@ -1,3 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Logophile</string>
+    <string name="tab_memory">记忆</string>
+    <string name="tab_word_bank">词库</string>
+    <string name="drawer_settings">设置</string>
+    <string name="drawer_import_export">导入导出</string>
+    <string name="drawer_about">关于</string>
+    <string name="search_hint">搜索单词…</string>
+    <string name="sort_alpha">字母表顺序</string>
+    <string name="sort_date">添加日期</string>
+    <string name="search_mode_word">搜索单词</string>
+    <string name="search_mode_definition">搜索释义</string>
+    <string name="confirm_delete_title">确认删除</string>
+    <string name="confirm_delete_text">确定要删除单词「%1$s」吗？</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="delete_word">删除单词</string>
+    <string name="add_new_word">添加新词</string>
+    <string name="input_word">输入单词…</string>
+    <string name="word_exists">单词已存在于词库</string>
+    <string name="search">搜索</string>
+    <string name="add">添加</string>
+    <string name="no_words">还没有单词</string>
+    <string name="tap_to_add">点击 + 添加你的第一个单词</string>
+    <string name="previous">上一个</string>
+    <string name="tip">提示</string>
+    <string name="play_audio">播放发音</string>
+    <string name="back">返回</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_font">单词字体</string>
+    <string name="settings_language">界面语言</string>
+    <string name="settings_theme">主题</string>
+    <string name="font_default">Default</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_monospace">Monospace</string>
+    <string name="lang_chinese">中文</string>
+    <string name="lang_english">English</string>
+    <string name="theme_light">白天</string>
+    <string name="theme_dark">黑夜</string>
+    <string name="theme_ocean">海洋蓝</string>
+    <string name="theme_rose">玫瑰粉</string>
+    <string name="theme_forest">森林绿</string>
+    <string name="about_title">关于</string>
+    <string name="import_export_title">导入导出</string>
+    <string name="export_db">导出词库 (.db)</string>
+    <string name="import_db">导入词库 (.db)</string>
+    <string name="export_success">导出成功</string>
+    <string name="export_fail">导出失败：%1$s</string>
+    <string name="import_success_count">成功导入 %1$d 个单词</string>
+    <string name="import_fail">导入失败：%1$s</string>
+    <string name="sort">排序</string>
+    <string name="more">更多</string>
 </resources>
+
+
