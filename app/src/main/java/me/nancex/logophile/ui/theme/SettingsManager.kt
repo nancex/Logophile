@@ -18,6 +18,8 @@ class SettingsManager(private val context: Context) {
         val THEME_KEY = intPreferencesKey("app_theme")
         val FONT_KEY = intPreferencesKey("app_font")
         val LANGUAGE_KEY = stringPreferencesKey("app_language")
+        val ORDER_KEY = stringPreferencesKey("wordbank_order")
+        val MODE_KEY = stringPreferencesKey("wordbank_mode")
     }
 
     val themeFlow: Flow<AppTheme> = context.dataStore.data.map { prefs ->
@@ -31,6 +33,14 @@ class SettingsManager(private val context: Context) {
     val languageFlow: Flow<AppLanguage> = context.dataStore.data.map { prefs ->
         val code = prefs[LANGUAGE_KEY] ?: "zh"
         AppLanguage.entries.find { it.code == code } ?: AppLanguage.CHINESE
+    }
+
+    val orderFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[ORDER_KEY] ?: "alpha"
+    }
+
+    val modeFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[MODE_KEY] ?: "word"
     }
 
     suspend fun setTheme(theme: AppTheme) {
@@ -48,6 +58,18 @@ class SettingsManager(private val context: Context) {
     suspend fun setLanguage(language: AppLanguage) {
         context.dataStore.edit { prefs ->
             prefs[LANGUAGE_KEY] = language.code
+        }
+    }
+
+    suspend fun setOrder(order: String) {
+        context.dataStore.edit { prefs ->
+            prefs[ORDER_KEY] = order
+        }
+    }
+
+    suspend fun setMode(mode: String) {
+        context.dataStore.edit { prefs ->
+            prefs[MODE_KEY] = mode
         }
     }
 }

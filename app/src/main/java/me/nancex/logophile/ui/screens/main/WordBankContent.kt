@@ -61,6 +61,7 @@ import me.nancex.logophile.R
 import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.repository.WordRepository
 import me.nancex.logophile.ui.theme.AppFont
+import me.nancex.logophile.ui.theme.SettingsManager
 import me.nancex.logophile.ui.theme.getWordFontFamily
 import me.nancex.logophile.ui.theme.getWordFontSizeMultiplier
 import me.nancex.logophile.viewmodel.MainViewModel
@@ -75,16 +76,21 @@ fun WordBankContent(
     viewModel: MainViewModel,
     font: AppFont = AppFont.DEFAULT
 ) {
-    val app = LocalContext.current.applicationContext as me.nancex.logophile.LogophileApp
+    val context = LocalContext.current
+    val app = context.applicationContext as me.nancex.logophile.LogophileApp
     val repository = app.repository
+    val settingsManager = remember { SettingsManager(context) }
     val words by repository.allWords.collectAsState(initial = emptyList())
     val wordFont = getWordFontFamily(font)
     val fontSizeMul = getWordFontSizeMultiplier(font)
+    val scope = rememberCoroutineScope()
 
     var searchQuery by remember { mutableStateOf("") }
     var showSortMenu by remember { mutableStateOf(false) }
-    var alphaOrder by remember { mutableStateOf(true) }
-    var searchMode by remember { mutableStateOf(SearchMode.BY_WORD) }
+    val order by settingsManager.orderFlow.collectAsState(initial = "alpha")
+    val mode by settingsManager.modeFlow.collectAsState(initial = "word")
+    val alphaOrder = order == "alpha"
+    val searchMode = if (mode == "word") SearchMode.BY_WORD else SearchMode.BY_DEFINITION
     var sheetWord by remember { mutableStateOf<WordEntry?>(null) }
     var wordToDelete by remember { mutableStateOf<WordEntry?>(null) }
     val sheetState = rememberModalBottomSheetState()
@@ -109,26 +115,38 @@ fun WordBankContent(
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_alpha)) },
-                        onClick = { alphaOrder = true; showSortMenu = false },
+                        onClick = {
+                            scope.launch { settingsManager.setOrder("alpha") }
+                            showSortMenu = false
+                        },
                         trailingIcon = { if (alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary) }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_date)) },
-                        onClick = { alphaOrder = false; showSortMenu = false },
+                        onClick = {
+                            scope.launch { settingsManager.setOrder("date") }
+                            showSortMenu = false
+                        },
                         trailingIcon = { if (!alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary) }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.search_mode_word)) },
-                        onClick = { searchMode = SearchMode.BY_WORD; showSortMenu = false },
+                        onClick = {
+                            scope.launch { settingsManager.setMode("word") }
+                            showSortMenu = false
+                        },
                         trailingIcon = { if (searchMode == SearchMode.BY_WORD)
                             Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.search_mode_definition)) },
-                        onClick = { searchMode = SearchMode.BY_DEFINITION; showSortMenu = false },
+                        onClick = {
+                            scope.launch { settingsManager.setMode("meaning") }
+                            showSortMenu = false
+                        },
                         trailingIcon = { if (searchMode == SearchMode.BY_DEFINITION)
                             Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                     )
