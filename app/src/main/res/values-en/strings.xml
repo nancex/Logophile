@@ -31,6 +31,7 @@
     <string name="settings_font">Word Font</string>
     <string name="settings_language">Interface Language</string>
     <string name="settings_theme">Theme</string>
+    <string name="settings_data">Data Management</string>
     <string name="font_default">Default</string>
     <string name="font_serif">Serif</string>
     <string name="font_monospace">Monospace</string>
@@ -42,6 +43,11 @@
     <string name="theme_ocean">Ocean Blue</string>
     <string name="theme_rose">Rose</string>
     <string name="theme_forest">Forest Green</string>
+    <string name="reset_counts">Reset Memory Counts</string>
+    <string name="reset_counts_title">Confirm Reset</string>
+    <string name="reset_counts_message">Reset pass and tip counts for all words to 0? This cannot be undone.</string>
+    <string name="reset">Reset</string>
+    <string name="reset_counts_done">Memory counts cleared</string>
     <string name="about_title">About</string>
     <string name="import_export_title">Import / Export</string>
     <string name="export_db">Export Database (.db)</string>

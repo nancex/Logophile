@@ -30,6 +30,7 @@ class WordRepository(private val wordDao: WordDao) {
     suspend fun deleteWordById(id: Int) = wordDao.deleteById(id)
     suspend fun incrementPassCount(id: Int) = wordDao.incrementPassCount(id)
     suspend fun incrementTipCount(id: Int) = wordDao.incrementTipCount(id)
+    suspend fun resetAllCounts() = wordDao.resetAllCounts()
     suspend fun getWordCount(): Int = wordDao.getWordCount()
     suspend fun getAllWordsList(): List<WordEntry> = wordDao.getAllWords()
 

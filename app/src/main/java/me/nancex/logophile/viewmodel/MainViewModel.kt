@@ -158,6 +158,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isRevisit = true, hasPrevious = previousWords.isNotEmpty())
     }
 
+    fun resetAllCounts() {
+        viewModelScope.launch { repository.resetAllCounts() }
+    }
+
     private fun pickNextWord() {
         if (wordList.isEmpty()) {
             _memoryState.value = _memoryState.value.copy(

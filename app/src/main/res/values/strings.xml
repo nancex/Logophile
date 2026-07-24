@@ -31,6 +31,7 @@
     <string name="settings_font">单词字体</string>
     <string name="settings_language">界面语言</string>
     <string name="settings_theme">主题</string>
+    <string name="settings_data">数据管理</string>
     <string name="font_default">Default</string>
     <string name="font_serif">Serif</string>
     <string name="font_monospace">Monospace</string>
@@ -42,6 +43,11 @@
     <string name="theme_ocean">海洋蓝</string>
     <string name="theme_rose">玫瑰粉</string>
     <string name="theme_forest">森林绿</string>
+    <string name="reset_counts">清空记忆计数</string>
+    <string name="reset_counts_title">确认清空</string>
+    <string name="reset_counts_message">将所有单词的通过次数和提示次数重置为 0？此操作不可撤销。</string>
+    <string name="reset">重置</string>
+    <string name="reset_counts_done">记忆计数已清空</string>
     <string name="about_title">关于</string>
     <string name="import_export_title">导入导出</string>
     <string name="export_db">导出词库 (.db)</string>
