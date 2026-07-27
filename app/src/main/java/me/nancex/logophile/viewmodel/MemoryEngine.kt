@@ -28,11 +28,13 @@ class MemoryEngine {
         tipQueue.clear()
     }
 
-    fun selectNext(words: List<WordEntry>): WordEntry {
-        val queueSize = tipQueue.size
-        val p = min(queueSize / 10.0, 1.0)
+    fun getQueueIds(): List<Int> = tipQueue.map { it.id }
 
-        if (queueSize > 0 && Math.random() < p) {
+    fun selectNext(words: List<WordEntry>): WordEntry {
+        val qSize = tipQueue.size
+        val p = min(qSize / 10.0, 1.0)
+
+        if (qSize > 0 && Math.random() < p) {
             return pickFromQueue()
         }
         return pickByDelta(words)
@@ -48,7 +50,7 @@ class MemoryEngine {
             else -> 2
         }
         val picked = tipQueue.removeAt(index.coerceAtMost(tipQueue.lastIndex))
-        Log.d(TAG, "select: QUEUE (p idx=$index) → '${picked.word}'")
+        Log.d(TAG, "select: QUEUE (idx=$index) -> '${picked.word}'")
         return picked
     }
 
@@ -61,7 +63,7 @@ class MemoryEngine {
         val bestPool = pool.filter { it.passCount - it.tipCount == minDelta }
         val picked = bestPool.random()
 
-        Log.d(TAG, "select: DELTA (delta=$minDelta, pool=${bestPool.size}/${pool.size}) → '${picked.word}'")
+        Log.d(TAG, "select: DELTA (delta=$minDelta, pool=${bestPool.size}/${pool.size}) -> '${picked.word}'")
         return picked
     }
 }

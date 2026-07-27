@@ -1,7 +1,6 @@
 package me.nancex.logophile.ui.screens.settings
 
 import android.app.Activity
-import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Column
@@ -67,13 +66,19 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var showResetDialog by remember { mutableStateOf(false) }
+    var hasNavigatedBack by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (!hasNavigatedBack) {
+                            hasNavigatedBack = true
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
@@ -119,7 +124,6 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             AppLanguage.ENGLISH -> LocaleListCompat.forLanguageTags("en-US")
                         }
                         AppCompatDelegate.setApplicationLocales(locale)
-                        Log.d("SettingsScreen", "language changed to ${lang.code}, recreating activity")
                         activity?.recreate()
                     }
                 }

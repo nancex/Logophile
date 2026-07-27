@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.VolumeUp
@@ -44,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +103,25 @@ fun WordBankContent(
     var wordToDelete by remember { mutableStateOf<WordEntry?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
+    val displayedWords by remember(searchQuery, words, searchMode, alphaOrder, sortAsc, wordTimeRange) {
+        derivedStateOf {
+            val filtered = if (searchQuery.isBlank()) words
+            else if (searchMode == SearchMode.BY_WORD)
+                words.filter { it.word.startsWith(searchQuery, ignoreCase = true) }
+            else words.filter { it.definition?.contains(searchQuery, ignoreCase = true) == true }
+
+            val timeCutoff = wordTimeRange.days?.let { System.currentTimeMillis() - it * 86_400_000L }
+            val timeFiltered = if (timeCutoff != null) filtered.filter { it.addedTime >= timeCutoff } else filtered
+
+            when {
+                alphaOrder && sortAsc -> timeFiltered.sortedBy { it.word.lowercase() }
+                alphaOrder && !sortAsc -> timeFiltered.sortedByDescending { it.word.lowercase() }
+                !alphaOrder && sortAsc -> timeFiltered.sortedBy { it.addedTime }
+                else -> timeFiltered.sortedByDescending { it.addedTime }
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -108,6 +131,14 @@ fun WordBankContent(
                 value = searchQuery, onValueChange = { searchQuery = it },
                 placeholder = { Text(stringResource(R.string.search_hint)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    Text(
+                        text = displayedWords.size.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                },
                 modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), singleLine = true
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -117,109 +148,95 @@ fun WordBankContent(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                    // Sort by
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sort_alpha)) },
-                        onClick = {
-                            scope.launch { settingsManager.setOrder("alpha") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sort_date)) },
-                        onClick = {
-                            scope.launch { settingsManager.setOrder("date") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (!alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    HorizontalDivider()
-                    // Sort direction
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sort_asc)) },
-                        onClick = {
-                            scope.launch { settingsManager.setWordSortDir("asc") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sort_desc)) },
-                        onClick = {
-                            scope.launch { settingsManager.setWordSortDir("desc") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (!sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    HorizontalDivider()
-                    // Search mode
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.search_mode_word)) },
-                        onClick = {
-                            scope.launch { settingsManager.setMode("word") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (searchMode == SearchMode.BY_WORD)
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.search_mode_definition)) },
-                        onClick = {
-                            scope.launch { settingsManager.setMode("meaning") }
-                            showSortMenu = false
-                        },
-                        trailingIcon = { if (searchMode == SearchMode.BY_DEFINITION)
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-                    )
-                    HorizontalDivider()
-                    // Time range
-                    TimeRange.entries.forEach { range ->
+                    Column(
+                        modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())
+                    ) {
                         DropdownMenuItem(
-                            text = {
-                                Text(when (range) {
-                                    TimeRange.THREE_DAYS -> stringResource(R.string.time_3d)
-                                    TimeRange.ONE_WEEK -> stringResource(R.string.time_1w)
-                                    TimeRange.ONE_MONTH -> stringResource(R.string.time_1m)
-                                    TimeRange.THREE_MONTHS -> stringResource(R.string.time_3m)
-                                    TimeRange.ALL -> stringResource(R.string.time_all)
-                                })
-                            },
+                            text = { Text(stringResource(R.string.sort_alpha)) },
                             onClick = {
-                                scope.launch { settingsManager.setWordTimeRange(range) }
+                                scope.launch { settingsManager.setOrder("alpha") }
                                 showSortMenu = false
                             },
-                            trailingIcon = {
-                                if (range == wordTimeRange) Icon(Icons.Filled.Check,
-                                    contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
+                            trailingIcon = { if (alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary) }
                         )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.sort_date)) },
+                            onClick = {
+                                scope.launch { settingsManager.setOrder("date") }
+                                showSortMenu = false
+                            },
+                            trailingIcon = { if (!alphaOrder) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.sort_asc)) },
+                            onClick = {
+                                scope.launch { settingsManager.setWordSortDir("asc") }
+                                showSortMenu = false
+                            },
+                            trailingIcon = { if (sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.sort_desc)) },
+                            onClick = {
+                                scope.launch { settingsManager.setWordSortDir("desc") }
+                                showSortMenu = false
+                            },
+                            trailingIcon = { if (!sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.search_mode_word)) },
+                            onClick = {
+                                scope.launch { settingsManager.setMode("word") }
+                                showSortMenu = false
+                            },
+                            trailingIcon = { if (searchMode == SearchMode.BY_WORD)
+                                Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.search_mode_definition)) },
+                            onClick = {
+                                scope.launch { settingsManager.setMode("meaning") }
+                                showSortMenu = false
+                            },
+                            trailingIcon = { if (searchMode == SearchMode.BY_DEFINITION)
+                                Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                        )
+                        HorizontalDivider()
+                        TimeRange.entries.forEach { range ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(when (range) {
+                                        TimeRange.ONE_DAY -> stringResource(R.string.time_1d)
+                                        TimeRange.THREE_DAYS -> stringResource(R.string.time_3d)
+                                        TimeRange.ONE_WEEK -> stringResource(R.string.time_1w)
+                                        TimeRange.ONE_MONTH -> stringResource(R.string.time_1m)
+                                        TimeRange.THREE_MONTHS -> stringResource(R.string.time_3m)
+                                        TimeRange.ALL -> stringResource(R.string.time_all)
+                                    })
+                                },
+                                onClick = {
+                                    scope.launch { settingsManager.setWordTimeRange(range) }
+                                    showSortMenu = false
+                                },
+                                trailingIcon = {
+                                    if (range == wordTimeRange) Icon(Icons.Filled.Check,
+                                        contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        val filteredWords = if (searchQuery.isBlank()) words
-        else if (searchMode == SearchMode.BY_WORD)
-            words.filter { it.word.startsWith(searchQuery, ignoreCase = true) }
-        else words.filter { it.definition?.contains(searchQuery, ignoreCase = true) == true }
-
-        val timeCutoff = wordTimeRange.days?.let { System.currentTimeMillis() - it * 86_400_000L }
-        val timeFiltered = if (timeCutoff != null) filteredWords.filter { it.addedTime >= timeCutoff } else filteredWords
-
-        val sortedWords = when {
-            alphaOrder && sortAsc -> timeFiltered.sortedBy { it.word.lowercase() }
-            alphaOrder && !sortAsc -> timeFiltered.sortedByDescending { it.word.lowercase() }
-            !alphaOrder && sortAsc -> timeFiltered.sortedBy { it.addedTime }
-            else -> timeFiltered.sortedByDescending { it.addedTime }
-        }
-
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(sortedWords, key = { it.id }) { word ->
+            items(displayedWords, key = { it.id }) { word ->
                 WordListItem(
                     word = word, fontFamily = wordFont, fontSizeMultiplier = fontSizeMul,
                     onClick = { sheetWord = word },
@@ -273,6 +290,14 @@ fun WordListItem(
     onClick: () -> Unit,
     onPlayAudio: () -> Unit
 ) {
+    val typography = MaterialTheme.typography
+    val wordStyle = remember(fontFamily, fontSizeMultiplier, typography) {
+        typography.bodyLarge.copy(
+            fontFamily = fontFamily,
+            fontSize = typography.bodyLarge.fontSize * fontSizeMultiplier
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -286,10 +311,7 @@ fun WordListItem(
         ) {
             Text(
                 text = word.word,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = fontFamily,
-                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * fontSizeMultiplier
-                ),
+                style = wordStyle,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )

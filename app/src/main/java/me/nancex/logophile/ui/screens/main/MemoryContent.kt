@@ -148,7 +148,7 @@ fun MemoryContent(
             ) {
                 Icon(imageVector = Icons.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.previous),
-                    modifier = Modifier.size(24.dp))
+                    modifier = Modifier.size(32.dp))
             }
             Spacer(modifier = Modifier.width(48.dp))
             Button(
@@ -160,7 +160,7 @@ fun MemoryContent(
             ) {
                 Icon(imageVector = Icons.Filled.Help,
                     contentDescription = stringResource(R.string.tip),
-                    modifier = Modifier.size(24.dp))
+                    modifier = Modifier.size(32.dp))
             }
         }
     }

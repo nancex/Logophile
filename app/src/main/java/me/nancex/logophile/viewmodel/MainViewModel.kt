@@ -1,16 +1,17 @@
 package me.nancex.logophile.viewmodel
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.nancex.logophile.LogophileApp
 import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.repository.WordRepository
+import me.nancex.logophile.ui.theme.SettingsManager
 import me.nancex.logophile.ui.theme.TimeRange
 
 data class AddWordState(
@@ -46,6 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as LogophileApp).repository
     private val engine = MemoryEngine()
+    private val settingsManager = SettingsManager(application)
 
     private val _addWordState = MutableStateFlow(AddWordState())
     val addWordState: StateFlow<AddWordState> = _addWordState.asStateFlow()
@@ -55,11 +57,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var wordList: List<WordEntry> = emptyList()
     private val previousWords = mutableListOf<WordEntry>()
+    private val forwardWords = mutableListOf<WordEntry>()
+    private var stateLoaded = false
 
     init {
         viewModelScope.launch {
+            val savedRange = try {
+                settingsManager.memoryTimeRangeFlow.first()
+            } catch (e: Exception) {
+                TimeRange.ALL
+            }
+            _memoryState.value = _memoryState.value.copy(timeRange = savedRange)
+
             repository.allWords.collect { words ->
                 wordList = words
+
+                if (!stateLoaded && words.isNotEmpty()) {
+                    restoreState(words)
+                    stateLoaded = true
+                    return@collect
+                }
+
                 val current = _memoryState.value.currentWord
                 if (current == null && words.isNotEmpty()) {
                     val filtered = filterByTimeRange(words)
@@ -70,10 +88,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             currentIndex = 0,
                             hasPrevious = false
                         )
+                        saveState()
                     }
                 } else if (current != null && words.none { it.id == current.id }) {
-                    Log.d(TAG, "collect: current word '${current.word}' deleted, advancing")
                     previousWords.removeAll { it.id == current.id }
+                    forwardWords.removeAll { it.id == current.id }
                     engine.removeWord(current.id)
                     pickNextWord()
                 } else {
@@ -84,14 +103,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ── State persistence ──────────────────────────────────────────
+
+    private suspend fun restoreState(words: List<WordEntry>) {
+        val saved = settingsManager.getMemoryState()
+        val wordById = words.associateBy { it.id }
+
+        saved.queueIds.forEach { id ->
+            wordById[id]?.let { engine.enqueueIfTipShown(it, true) }
+        }
+
+        saved.previousIds.forEach { id ->
+            wordById[id]?.let { previousWords.add(it) }
+        }
+
+        saved.forwardIds.forEach { id ->
+            wordById[id]?.let { forwardWords.add(it) }
+        }
+
+        val currentWord = saved.currentId.let { wordById[it] }
+        if (currentWord != null) {
+            val filtered = filterByTimeRange(words)
+            val idx = filtered.indexOfFirst { it.id == currentWord.id }.coerceAtLeast(0)
+            _memoryState.value = _memoryState.value.copy(
+                currentWord = currentWord,
+                wordCount = filtered.size,
+                currentIndex = idx,
+                hasPrevious = previousWords.isNotEmpty()
+            )
+        } else {
+            val filtered = filterByTimeRange(words)
+            if (filtered.isNotEmpty()) {
+                _memoryState.value = _memoryState.value.copy(
+                    currentWord = filtered.first(),
+                    wordCount = filtered.size,
+                    currentIndex = 0
+                )
+            }
+        }
+    }
+
+    private fun saveState() {
+        viewModelScope.launch {
+            val currentId = _memoryState.value.currentWord?.id ?: -1
+            settingsManager.saveMemoryState(
+                currentId = currentId,
+                queueIds = engine.getQueueIds(),
+                previousIds = previousWords.map { it.id },
+                forwardIds = forwardWords.map { it.id }
+            )
+        }
+    }
+
     // ── Time range ─────────────────────────────────────────────────
 
     fun setTimeRange(range: TimeRange) {
         val current = _memoryState.value
         if (current.timeRange == range) return
         engine.clearQueue()
+        forwardWords.clear()
         _memoryState.value = current.copy(timeRange = range)
-        viewModelScope.launch { pickNextWord() }
+        viewModelScope.launch {
+            pickNextWord()
+            saveState()
+        }
     }
 
     private fun filterByTimeRange(words: List<WordEntry>): List<WordEntry> {
@@ -151,8 +226,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 word = word.lowercase(), language = "eng",
                 phonetic = state.phonetic, definition = state.definitionJson,
                 audioUrl = state.audioUrl, addedTime = System.currentTimeMillis())
-            val id = repository.insertWord(newWord)
-            Log.d(TAG, "addWord: inserted id=$id word='${newWord.word}'")
+            repository.insertWord(newWord)
             clearAddWordState()
         }
     }
@@ -167,10 +241,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (!isRevisit) {
                 repository.incrementPassCount(current.id)
                 engine.enqueueIfTipShown(current, tipWasShown)
+                forwardWords.clear()
             }
             previousWords.add(current)
             while (previousWords.size > MAX_PREVIOUS) { previousWords.removeAt(0) }
-            pickNextWord()
+
+            if (isRevisit && forwardWords.isNotEmpty()) {
+                val next = forwardWords.removeAt(forwardWords.lastIndex)
+                val stillRevisiting = forwardWords.isNotEmpty()
+                val filtered = filterByTimeRange(repository.getAllWordsList())
+                val idx = filtered.indexOfFirst { it.id == next.id }.coerceAtLeast(0)
+                _memoryState.value = _memoryState.value.copy(
+                    currentWord = next, isShowingTip = false,
+                    currentIndex = idx, hasPrevious = true, isRevisit = stillRevisiting)
+            } else {
+                pickNextWord()
+            }
+            saveState()
         }
     }
 
@@ -183,15 +270,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun showPrevious() {
         if (previousWords.isEmpty()) return
         val prevWord = previousWords.removeAt(previousWords.lastIndex)
+        val current = _memoryState.value.currentWord
+        if (current != null) forwardWords.add(current)
         _memoryState.value = _memoryState.value.copy(
             currentWord = prevWord, isShowingTip = false,
             isRevisit = true, hasPrevious = previousWords.isNotEmpty())
+        viewModelScope.launch { saveState() }
     }
 
     fun resetAllCounts() {
         viewModelScope.launch {
             repository.resetAllCounts()
             engine.clearQueue()
+            forwardWords.clear()
+            settingsManager.clearMemoryState()
         }
     }
 
@@ -224,8 +316,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.deleteWord(word)
             engine.removeWord(word.id)
+            forwardWords.removeAll { it.id == word.id }
             if (_memoryState.value.currentWord?.id == word.id) { pickNextWord() }
             previousWords.removeAll { it.id == word.id }
+            saveState()
         }
     }
 }

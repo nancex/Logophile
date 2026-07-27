@@ -27,14 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.nancex.logophile.R
 
 @Composable
 fun LogophileDrawer(
     drawerState: DrawerState,
-    scope: CoroutineScope,
+    scope: kotlinx.coroutines.CoroutineScope,
     onSettingsClick: () -> Unit,
     onImportExportClick: () -> Unit,
     onAboutClick: () -> Unit,
@@ -62,7 +61,9 @@ fun LogophileDrawer(
                         icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                         label = { Text(stringResource(R.string.drawer_settings)) },
                         selected = false,
-                        onClick = { scope.launch { drawerState.close() }; onSettingsClick() },
+                        onClick = {
+                            scope.launch { drawerState.close(); onSettingsClick() }
+                        },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
@@ -70,7 +71,9 @@ fun LogophileDrawer(
                         icon = { Icon(Icons.Filled.IosShare, contentDescription = null) },
                         label = { Text(stringResource(R.string.drawer_import_export)) },
                         selected = false,
-                        onClick = { scope.launch { drawerState.close() }; onImportExportClick() },
+                        onClick = {
+                            scope.launch { drawerState.close(); onImportExportClick() }
+                        },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
@@ -78,7 +81,9 @@ fun LogophileDrawer(
                         icon = { Icon(Icons.Filled.Info, contentDescription = null) },
                         label = { Text(stringResource(R.string.drawer_about)) },
                         selected = false,
-                        onClick = { scope.launch { drawerState.close() }; onAboutClick() },
+                        onClick = {
+                            scope.launch { drawerState.close(); onAboutClick() }
+                        },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
 
@@ -96,4 +101,3 @@ fun LogophileDrawer(
         content = content
     )
 }
-

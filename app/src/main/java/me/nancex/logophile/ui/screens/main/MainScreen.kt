@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,11 +53,6 @@ fun MainScreen(
     val context = LocalContext.current
     val repository = (context.applicationContext as me.nancex.logophile.LogophileApp).repository
     val settingsManager = remember { SettingsManager(context) }
-    val savedTimeRange by settingsManager.memoryTimeRangeFlow.collectAsState(initial = TimeRange.ALL)
-
-    LaunchedEffect(savedTimeRange) {
-        viewModel.setTimeRange(savedTimeRange)
-    }
 
     LogophileDrawer(
         drawerState = drawerState, scope = scope,
@@ -73,7 +67,11 @@ fun MainScreen(
                         BottomNavTab.MEMORY -> stringResource(R.string.tab_memory)
                         BottomNavTab.WORD_BANK -> stringResource(R.string.tab_word_bank)
                     },
-                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onMenuClick = {
+                        if (drawerState.isClosed) {
+                            scope.launch { drawerState.open() }
+                        }
+                    },
                     actions = {
                         if (selectedTab == BottomNavTab.MEMORY) {
                             Box {
@@ -93,6 +91,7 @@ fun MainScreen(
                                         DropdownMenuItem(
                                             text = {
                                                 Text(when (range) {
+                                                    TimeRange.ONE_DAY -> stringResource(R.string.time_1d)
                                                     TimeRange.THREE_DAYS -> stringResource(R.string.time_3d)
                                                     TimeRange.ONE_WEEK -> stringResource(R.string.time_1w)
                                                     TimeRange.ONE_MONTH -> stringResource(R.string.time_1m)
@@ -105,7 +104,7 @@ fun MainScreen(
                                                 scope.launch { settingsManager.setMemoryTimeRange(range) }
                                                 showFilterMenu = false
                                             },
-                                            leadingIcon = {
+                                            trailingIcon = {
                                                 if (range == memoryState.timeRange) {
                                                     Icon(Icons.Filled.Check,
                                                         contentDescription = null,

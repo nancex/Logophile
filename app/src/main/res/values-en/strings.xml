@@ -15,12 +15,14 @@
     <string name="search_mode_word">Search by Word</string>
     <string name="search_mode_definition">Search by Definition</string>
     <string name="time_range">Time Range</string>
+    <string name="time_1d">1 Day</string>
     <string name="time_3d">3 Days</string>
     <string name="time_1w">1 Week</string>
     <string name="time_1m">1 Month</string>
     <string name="time_3m">3 Months</string>
     <string name="time_all">All Time</string>
     <string name="filter_words">Filter</string>
+    <string name="word_count">%1$d word(s)</string>
     <string name="confirm_delete_title">Confirm Delete</string>
     <string name="confirm_delete_text">Delete the word "%1$s"?</string>
     <string name="cancel">Cancel</string>

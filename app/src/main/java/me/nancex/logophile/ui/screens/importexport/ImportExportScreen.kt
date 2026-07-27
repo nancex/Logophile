@@ -1,6 +1,5 @@
 package me.nancex.logophile.ui.screens.importexport
 
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,7 +27,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,6 +52,7 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as LogophileApp
     val scope = rememberCoroutineScope()
+    var hasNavigatedBack by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -59,7 +63,6 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
                     withContext(Dispatchers.IO) {
                         app.repository.checkpointBeforeExport(context)
                         val dbFile = context.getDatabasePath("logophile_database")
-                        Log.d("ImportExport", "export: dbFile path=${dbFile.absolutePath}, size=${dbFile.length()}")
                         context.contentResolver.openOutputStream(it)?.use { output ->
                             FileInputStream(dbFile).use { input -> input.copyTo(output) }
                         }
@@ -68,7 +71,6 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
                         Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    Log.e("ImportExport", "export failed: ${e.message}", e)
                     withContext(Dispatchers.Main) {
                         Toast.makeText(context, context.getString(R.string.export_fail, e.message), Toast.LENGTH_SHORT).show()
                     }
@@ -86,22 +88,18 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
                     var importedCount = 0
                     withContext(Dispatchers.IO) {
                         val tempFile = File(context.cacheDir, "import_temp.db")
-                        Log.d("ImportExport", "import: copying to ${tempFile.absolutePath}")
                         context.contentResolver.openInputStream(it)?.use { input ->
                             FileOutputStream(tempFile).use { output -> input.copyTo(output) }
                         }
-                        Log.d("ImportExport", "import: temp file size=${tempFile.length()}")
                         importedCount = app.repository.importFromFile(context, tempFile.absolutePath)
                         tempFile.delete()
                     }
                     withContext(Dispatchers.Main) {
-                        Log.d("ImportExport", "import: complete, imported $importedCount words")
                         Toast.makeText(context,
                             context.getString(R.string.import_success_count, importedCount),
                             Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    Log.e("ImportExport", "import failed: ${e.message}", e)
                     withContext(Dispatchers.Main) {
                         Toast.makeText(context,
                             context.getString(R.string.import_fail, e.message),
@@ -117,7 +115,12 @@ fun ImportExportScreen(onNavigateBack: () -> Unit) {
             TopAppBar(
                 title = { Text(stringResource(R.string.import_export_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (!hasNavigatedBack) {
+                            hasNavigatedBack = true
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
