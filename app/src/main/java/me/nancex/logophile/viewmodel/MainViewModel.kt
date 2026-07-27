@@ -103,70 +103,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── State persistence ──────────────────────────────────────────
-
     private suspend fun restoreState(words: List<WordEntry>) {
         val saved = settingsManager.getMemoryState()
         val wordById = words.associateBy { it.id }
 
-        saved.queueIds.forEach { id ->
-            wordById[id]?.let { engine.enqueueIfTipShown(it, true) }
-        }
-
-        saved.previousIds.forEach { id ->
-            wordById[id]?.let { previousWords.add(it) }
-        }
-
-        saved.forwardIds.forEach { id ->
-            wordById[id]?.let { forwardWords.add(it) }
-        }
+        saved.queueIds.forEach { id -> wordById[id]?.let { engine.enqueueIfTipShown(it, true) } }
+        saved.previousIds.forEach { id -> wordById[id]?.let { previousWords.add(it) } }
+        saved.forwardIds.forEach { id -> wordById[id]?.let { forwardWords.add(it) } }
 
         val currentWord = saved.currentId.let { wordById[it] }
         if (currentWord != null) {
             val filtered = filterByTimeRange(words)
             val idx = filtered.indexOfFirst { it.id == currentWord.id }.coerceAtLeast(0)
             _memoryState.value = _memoryState.value.copy(
-                currentWord = currentWord,
-                wordCount = filtered.size,
-                currentIndex = idx,
-                hasPrevious = previousWords.isNotEmpty()
-            )
+                currentWord = currentWord, wordCount = filtered.size,
+                currentIndex = idx, hasPrevious = previousWords.isNotEmpty())
         } else {
             val filtered = filterByTimeRange(words)
             if (filtered.isNotEmpty()) {
                 _memoryState.value = _memoryState.value.copy(
-                    currentWord = filtered.first(),
-                    wordCount = filtered.size,
-                    currentIndex = 0
-                )
+                    currentWord = filtered.first(), wordCount = filtered.size, currentIndex = 0)
             }
         }
     }
 
     private fun saveState() {
         viewModelScope.launch {
-            val currentId = _memoryState.value.currentWord?.id ?: -1
             settingsManager.saveMemoryState(
-                currentId = currentId,
+                currentId = _memoryState.value.currentWord?.id ?: -1,
                 queueIds = engine.getQueueIds(),
                 previousIds = previousWords.map { it.id },
-                forwardIds = forwardWords.map { it.id }
-            )
+                forwardIds = forwardWords.map { it.id })
         }
     }
-
-    // ── Time range ─────────────────────────────────────────────────
 
     fun setTimeRange(range: TimeRange) {
         val current = _memoryState.value
         if (current.timeRange == range) return
         engine.clearQueue()
         forwardWords.clear()
+        previousWords.clear()
         _memoryState.value = current.copy(timeRange = range)
-        viewModelScope.launch {
-            pickNextWord()
-            saveState()
-        }
+        viewModelScope.launch { pickNextWord(); saveState() }
     }
 
     private fun filterByTimeRange(words: List<WordEntry>): List<WordEntry> {
@@ -174,8 +152,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val cutoff = range.days?.let { System.currentTimeMillis() - it * 86_400_000L }
         return if (cutoff != null) words.filter { it.addedTime >= cutoff } else words
     }
-
-    // ── Add-word flow ──────────────────────────────────────────────
 
     fun updateAddWordInput(input: String) {
         val wasModified = _addWordState.value.hasResult && input != _addWordState.value.searchedWord
@@ -231,8 +207,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── Memory flow ────────────────────────────────────────────────
-
     fun passWord() {
         val current = _memoryState.value.currentWord ?: return
         val isRevisit = _memoryState.value.isRevisit
@@ -287,8 +261,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── Word selection ─────────────────────────────────────────────
-
     private suspend fun pickNextWord() {
         val words = filterByTimeRange(repository.getAllWordsList())
 
@@ -301,16 +273,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val selected = engine.selectNext(words)
         val idx = words.indexOfFirst { it.id == selected.id }.coerceAtLeast(0)
-
         _memoryState.value = _memoryState.value.copy(
-            currentWord = selected,
-            isShowingTip = false,
-            currentIndex = idx,
-            hasPrevious = previousWords.isNotEmpty(),
-            isRevisit = false)
+            currentWord = selected, isShowingTip = false,
+            currentIndex = idx, hasPrevious = previousWords.isNotEmpty(), isRevisit = false)
     }
-
-    // ── Delete ─────────────────────────────────────────────────────
 
     fun deleteWord(word: WordEntry) {
         viewModelScope.launch {

@@ -8,6 +8,16 @@ class MemoryEngine {
 
     companion object {
         private const val TAG = "MemoryEngine"
+
+        // Probability: P = min(queueSize / QUEUE_DIVISOR, 1.0)
+        private const val QUEUE_DIVISOR = 10.0
+
+        // Distribution for picking from queue (first / second / third)
+        private const val QUEUE_PICK_FIRST = 0.6
+        private const val QUEUE_PICK_SECOND = 0.8  // cumulative: 0.6 + 0.2
+
+        // Distribution when queue has only 2 items (first / second)
+        private const val QUEUE_TWO_FIRST = 0.75
     }
 
     private val tipQueue = mutableListOf<WordEntry>()
@@ -32,7 +42,7 @@ class MemoryEngine {
 
     fun selectNext(words: List<WordEntry>): WordEntry {
         val qSize = tipQueue.size
-        val p = min(qSize / 10.0, 1.0)
+        val p = min(qSize / QUEUE_DIVISOR, 1.0)
 
         if (qSize > 0 && Math.random() < p) {
             return pickFromQueue()
@@ -44,9 +54,9 @@ class MemoryEngine {
         val roll = Math.random()
         val index = when {
             queueSize == 1 -> 0
-            queueSize == 2 -> if (roll < 0.75) 0 else 1
-            roll < 0.6 -> 0
-            roll < 0.8 -> 1
+            queueSize == 2 -> if (roll < QUEUE_TWO_FIRST) 0 else 1
+            roll < QUEUE_PICK_FIRST -> 0
+            roll < QUEUE_PICK_SECOND -> 1
             else -> 2
         }
         val picked = tipQueue.removeAt(index.coerceAtMost(tipQueue.lastIndex))
