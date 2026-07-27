@@ -62,6 +62,7 @@ import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.repository.WordRepository
 import me.nancex.logophile.ui.theme.AppFont
 import me.nancex.logophile.ui.theme.SettingsManager
+import me.nancex.logophile.ui.theme.TimeRange
 import me.nancex.logophile.ui.theme.getWordFontFamily
 import me.nancex.logophile.ui.theme.getWordFontSizeMultiplier
 import me.nancex.logophile.viewmodel.MainViewModel
@@ -89,7 +90,10 @@ fun WordBankContent(
     var showSortMenu by remember { mutableStateOf(false) }
     val order by settingsManager.orderFlow.collectAsState(initial = "alpha")
     val mode by settingsManager.modeFlow.collectAsState(initial = "word")
+    val sortDir by settingsManager.wordSortDirFlow.collectAsState(initial = "asc")
+    val wordTimeRange by settingsManager.wordTimeRangeFlow.collectAsState(initial = TimeRange.ALL)
     val alphaOrder = order == "alpha"
+    val sortAsc = sortDir == "asc"
     val searchMode = if (mode == "word") SearchMode.BY_WORD else SearchMode.BY_DEFINITION
     var sheetWord by remember { mutableStateOf<WordEntry?>(null) }
     var wordToDelete by remember { mutableStateOf<WordEntry?>(null) }
@@ -113,6 +117,7 @@ fun WordBankContent(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    // Sort by
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_alpha)) },
                         onClick = {
@@ -132,6 +137,27 @@ fun WordBankContent(
                             tint = MaterialTheme.colorScheme.primary) }
                     )
                     HorizontalDivider()
+                    // Sort direction
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sort_asc)) },
+                        onClick = {
+                            scope.launch { settingsManager.setWordSortDir("asc") }
+                            showSortMenu = false
+                        },
+                        trailingIcon = { if (sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sort_desc)) },
+                        onClick = {
+                            scope.launch { settingsManager.setWordSortDir("desc") }
+                            showSortMenu = false
+                        },
+                        trailingIcon = { if (!sortAsc) Icon(Icons.Filled.Check, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary) }
+                    )
+                    HorizontalDivider()
+                    // Search mode
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.search_mode_word)) },
                         onClick = {
@@ -150,6 +176,29 @@ fun WordBankContent(
                         trailingIcon = { if (searchMode == SearchMode.BY_DEFINITION)
                             Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                     )
+                    HorizontalDivider()
+                    // Time range
+                    TimeRange.entries.forEach { range ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(when (range) {
+                                    TimeRange.THREE_DAYS -> stringResource(R.string.time_3d)
+                                    TimeRange.ONE_WEEK -> stringResource(R.string.time_1w)
+                                    TimeRange.ONE_MONTH -> stringResource(R.string.time_1m)
+                                    TimeRange.THREE_MONTHS -> stringResource(R.string.time_3m)
+                                    TimeRange.ALL -> stringResource(R.string.time_all)
+                                })
+                            },
+                            onClick = {
+                                scope.launch { settingsManager.setWordTimeRange(range) }
+                                showSortMenu = false
+                            },
+                            trailingIcon = {
+                                if (range == wordTimeRange) Icon(Icons.Filled.Check,
+                                    contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -159,8 +208,15 @@ fun WordBankContent(
             words.filter { it.word.startsWith(searchQuery, ignoreCase = true) }
         else words.filter { it.definition?.contains(searchQuery, ignoreCase = true) == true }
 
-        val sortedWords = if (alphaOrder) filteredWords.sortedBy { it.word.lowercase() }
-            else filteredWords.sortedByDescending { it.addedTime }
+        val timeCutoff = wordTimeRange.days?.let { System.currentTimeMillis() - it * 86_400_000L }
+        val timeFiltered = if (timeCutoff != null) filteredWords.filter { it.addedTime >= timeCutoff } else filteredWords
+
+        val sortedWords = when {
+            alphaOrder && sortAsc -> timeFiltered.sortedBy { it.word.lowercase() }
+            alphaOrder && !sortAsc -> timeFiltered.sortedByDescending { it.word.lowercase() }
+            !alphaOrder && sortAsc -> timeFiltered.sortedBy { it.addedTime }
+            else -> timeFiltered.sortedByDescending { it.addedTime }
+        }
 
         LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items(sortedWords, key = { it.id }) { word ->

@@ -1,5 +1,6 @@
 package me.nancex.logophile.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -20,7 +21,8 @@ fun LogophileTopBar(
     showMenu: Boolean = true,
     onMenuClick: () -> Unit = {},
     showBack: Boolean = false,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -47,6 +49,7 @@ fun LogophileTopBar(
                 }
             }
         },
+        actions = { actions() },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
