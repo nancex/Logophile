@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -102,6 +104,11 @@ fun WordBankContent(
     var sheetWord by remember { mutableStateOf<WordEntry?>(null) }
     var wordToDelete by remember { mutableStateOf<WordEntry?>(null) }
     val sheetState = rememberModalBottomSheetState()
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(order, sortDir, mode, wordTimeRange) {
+        listState.scrollToItem(0)
+    }
 
     val displayedWords by remember(searchQuery, words, searchMode, alphaOrder, sortAsc, wordTimeRange) {
         derivedStateOf {
@@ -235,7 +242,11 @@ fun WordBankContent(
             }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             items(displayedWords, key = { it.id }) { word ->
                 WordListItem(
                     word = word, fontFamily = wordFont, fontSizeMultiplier = fontSizeMul,
