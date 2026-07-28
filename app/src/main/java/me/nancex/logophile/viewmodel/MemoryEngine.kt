@@ -9,18 +9,30 @@ class MemoryEngine {
     companion object {
         private const val TAG = "MemoryEngine"
 
-        // Probability: P = min(queueSize / QUEUE_DIVISOR, 1.0)
+        // P = min(queueSize / QUEUE_DIVISOR, 1.0)
         private const val QUEUE_DIVISOR = 10.0
 
-        // Distribution for picking from queue (first / second / third)
+        // Queue pick distribution (first / second / third)
         private const val QUEUE_PICK_FIRST = 0.6
-        private const val QUEUE_PICK_SECOND = 0.8  // cumulative: 0.6 + 0.2
+        private const val QUEUE_PICK_SECOND = 0.8
 
-        // Distribution when queue has only 2 items (first / second)
+        // Distribution when queue has only 2 items
         private const val QUEUE_TWO_FIRST = 0.75
+
+        // P2 = min((delta - 1) * REJECTION_BASE, REJECTION_MAX)
+        private const val REJECTION_BASE = 0.25
+        private const val REJECTION_MAX = 0.75
+
+        // Recent-queue size for deduplication
+        private const val RECENT_QUEUE_SIZE = 5
+
+        // Safety limit for dedup retries
+        private const val MAX_DEDUP_ATTEMPTS = 50
     }
 
     private val tipQueue = mutableListOf<WordEntry>()
+    private val recentQueue = mutableListOf<WordEntry>()
+
     val queueSize: Int get() = tipQueue.size
 
     fun enqueueIfTipShown(word: WordEntry, tipWasShown: Boolean) {
@@ -32,13 +44,17 @@ class MemoryEngine {
 
     fun removeWord(wordId: Int) {
         tipQueue.removeAll { it.id == wordId }
+        recentQueue.removeAll { it.id == wordId }
     }
 
     fun clearQueue() {
         tipQueue.clear()
+        recentQueue.clear()
     }
 
     fun getQueueIds(): List<Int> = tipQueue.map { it.id }
+
+    // ── Main algorithm ─────────────────────────────────────────────
 
     fun selectNext(words: List<WordEntry>): WordEntry {
         val qSize = tipQueue.size
@@ -47,8 +63,15 @@ class MemoryEngine {
         if (qSize > 0 && Math.random() < p) {
             return pickFromQueue()
         }
-        return pickByDelta(words)
+
+        val queueIds = tipQueue.map { it.id }.toSet()
+        val nonQueue = words.filter { it.id !in queueIds }
+        val pool = nonQueue.ifEmpty { words }
+
+        return pickFromNonQueue(pool)
     }
+
+    // ── Step 3: pick from tip-queue ────────────────────────────────
 
     private fun pickFromQueue(): WordEntry {
         val roll = Math.random()
@@ -64,16 +87,43 @@ class MemoryEngine {
         return picked
     }
 
-    private fun pickByDelta(words: List<WordEntry>): WordEntry {
-        val queueIds = tipQueue.map { it.id }.toSet()
-        val candidates = words.filter { it.id !in queueIds }
-        val pool = candidates.ifEmpty { words }
+    // ── Steps 4-6: pick from non-queue pool ────────────────────────
 
-        val minDelta = pool.minOf { it.passCount - it.tipCount }
-        val bestPool = pool.filter { it.passCount - it.tipCount == minDelta }
-        val picked = bestPool.random()
+    private fun pickFromNonQueue(pool: List<WordEntry>): WordEntry {
+        // Precompute zero-pass words once (O(n), not repeated in the loop)
+        val zeroPass = pool.filter { it.passCount == 0 }
 
-        Log.d(TAG, "select: DELTA (delta=$minDelta, pool=${bestPool.size}/${pool.size}) -> '${picked.word}'")
-        return picked
+        var attempts = 0
+        while (attempts < MAX_DEDUP_ATTEMPTS) {
+            attempts++
+            val candidate = if (zeroPass.isNotEmpty()) zeroPass.random() else pickByRejection(pool)
+
+            if (recentQueue.none { it.id == candidate.id }) {
+                recentQueue.add(candidate)
+                if (recentQueue.size > RECENT_QUEUE_SIZE) {
+                    recentQueue.removeAt(0)
+                }
+                Log.d(TAG, "select: NON-QUEUE (attempts=$attempts) -> '${candidate.word}' (recent=${recentQueue.map { it.word }})")
+                return candidate
+            }
+            Log.d(TAG, "select: skip '${candidate.word}' (already in recent queue)")
+        }
+
+        // Safety fallback: all words are in recentQueue → pick any
+        val fallback = pool.random()
+        Log.w(TAG, "select: FALLBACK after $attempts attempts -> '${fallback.word}'")
+        return fallback
+    }
+
+    // ── Step 5: rejection sampling by delta ────────────────────────
+
+    private fun pickByRejection(pool: List<WordEntry>): WordEntry {
+        while (true) {
+            val word = pool.random()
+            val delta = word.passCount - word.tipCount
+            if (delta <= 1) return word
+            val p2 = min((delta - 1) * REJECTION_BASE, REJECTION_MAX)
+            if (Math.random() >= p2) return word
+        }
     }
 }
