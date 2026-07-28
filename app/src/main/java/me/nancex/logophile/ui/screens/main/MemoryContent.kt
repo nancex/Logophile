@@ -1,5 +1,7 @@
 package me.nancex.logophile.ui.screens.main
 
+import android.media.MediaPlayer
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,11 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +46,8 @@ import me.nancex.logophile.data.repository.WordRepository
 import me.nancex.logophile.ui.theme.AppFont
 import me.nancex.logophile.ui.theme.getWordFontFamily
 import me.nancex.logophile.viewmodel.MemoryState
+
+private const val TAG = "MemoryContent"
 
 @Composable
 fun MemoryContent(
@@ -123,10 +128,12 @@ fun MemoryContent(
                 }
                 if (!word.audioUrl.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Icon(imageVector = Icons.Filled.VolumeUp,
-                        contentDescription = stringResource(R.string.play_audio),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp))
+                    IconButton(onClick = { playAudio(word.audioUrl) }) {
+                        Icon(imageVector = Icons.Filled.VolumeUp,
+                            contentDescription = stringResource(R.string.play_audio),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp))
+                    }
                 }
             }
         }
@@ -158,12 +165,25 @@ fun MemoryContent(
                     contentColor = MaterialTheme.colorScheme.onSurface),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
-                Icon(imageVector = Icons.Filled.Help,
+                Icon(imageVector = Icons.Outlined.Help,
                     contentDescription = stringResource(R.string.tip),
                     modifier = Modifier.size(32.dp))
             }
         }
     }
+}
+
+private fun playAudio(audioUrl: String?) {
+    if (audioUrl.isNullOrEmpty()) { Log.d(TAG, "playAudio: audioUrl is null, skipping"); return }
+    Log.d(TAG, "playAudio: attempting $audioUrl")
+    try {
+        val mp = MediaPlayer()
+        mp.setDataSource(audioUrl)
+        mp.setOnPreparedListener { it.start() }
+        mp.setOnErrorListener { _, what, extra -> Log.e(TAG, "playAudio: error what=$what extra=$extra"); false }
+        mp.setOnCompletionListener { it.release() }
+        mp.prepareAsync()
+    } catch (e: Exception) { Log.e(TAG, "playAudio: exception: ${e.message}", e) }
 }
 
 @Composable
