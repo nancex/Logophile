@@ -16,7 +16,7 @@ Stick around — this app offers an elegant solution!
 
 - Enter any word on the go, and the app will automatically fetch its definition, phonetic transcription, and audio online. Add it to your word bank with a single tap!
 - Browse your word bank! Sort alphabetically or by date added, and filter by time range. (Oh, magnificent word bank — we take pride in your length today!)
-- Can't just stash! More than a collector? Head to the Memory screen, run your fingers over every word (like they'd love you to), and respond to how they make you feel.
+- Can't just stash! More than a collector? Head to the Memory screen, run your fingers over every word (like they'd love you to), and respond to how they make you feel. (Memorize them!)
 
 
 
