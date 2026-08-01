@@ -23,6 +23,7 @@
     <string name="time_all">All Time</string>
     <string name="filter_words">Filter</string>
     <string name="word_count">%1$d word(s)</string>
+    <string name="clear">Clear</string>
     <string name="confirm_delete_title">Confirm Delete</string>
     <string name="confirm_delete_text">Delete the word "%1$s"?</string>
     <string name="cancel">Cancel</string>

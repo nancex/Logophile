@@ -175,21 +175,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             val result = repository.fetchWordDefinition(word.lowercase())
-            if (result != null) {
-                val (phonetic, defJson, audioUrl) = result
-                val defDisplay = repository.parseDefinitionToDisplayText(defJson)
-                val hasResult = phonetic != null || defDisplay.isNotEmpty()
-                _addWordState.value = _addWordState.value.copy(
-                    isLoading = false, phonetic = phonetic, definitionJson = defJson,
-                    definitionDisplay = defDisplay, audioUrl = audioUrl,
-                    hasResult = hasResult, alreadyExists = false,
-                    searchedWord = word, wasModifiedAfterSearch = false)
-            } else {
+            if (result.error != null) {
                 _addWordState.value = _addWordState.value.copy(
                     isLoading = false,
-                    errorMessage = "Failed to fetch word definition. Check network.",
+                    errorMessage = result.error,
                     searchedWord = "", wasModifiedAfterSearch = false)
+                return@launch
             }
+            val data = result.data!!
+            val defDisplay = repository.parseDefinitionToDisplayText(data.definitionJson)
+            val hasResult = data.phonetic != null || defDisplay.isNotEmpty()
+            _addWordState.value = _addWordState.value.copy(
+                isLoading = false, phonetic = data.phonetic, definitionJson = data.definitionJson,
+                definitionDisplay = defDisplay, audioUrl = data.audioUrl,
+                hasResult = hasResult, alreadyExists = false,
+                searchedWord = word, wasModifiedAfterSearch = false)
         }
     }
 

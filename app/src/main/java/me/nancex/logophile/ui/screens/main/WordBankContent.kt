@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -58,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +93,7 @@ fun WordBankContent(
     val wordFont = getWordFontFamily(font)
     val fontSizeMul = getWordFontSizeMultiplier(font)
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     var searchQuery by remember { mutableStateOf("") }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -137,7 +140,15 @@ fun WordBankContent(
             OutlinedTextField(
                 value = searchQuery, onValueChange = { searchQuery = it },
                 placeholder = { Text(stringResource(R.string.search_hint)) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = ""; focusManager.clearFocus() }) {
+                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.clear))
+                        }
+                    } else {
+                        Icon(Icons.Filled.Search, contentDescription = null)
+                    }
+                },
                 trailingIcon = {
                     Text(
                         text = displayedWords.size.toString(),
@@ -286,9 +297,9 @@ private fun playAudio(audioUrl: String?) {
     try {
         val mp = MediaPlayer()
         mp.setDataSource(audioUrl)
-        mp.setOnPreparedListener { Log.d(TAG, "playAudio: prepared, starting"); it.start() }
+        mp.setOnPreparedListener { it.start() }
         mp.setOnErrorListener { _, what, extra -> Log.e(TAG, "playAudio: error what=$what extra=$extra"); false }
-        mp.setOnCompletionListener { Log.d(TAG, "playAudio: completed"); it.release() }
+        mp.setOnCompletionListener { it.release() }
         mp.prepareAsync()
     } catch (e: Exception) { Log.e(TAG, "playAudio: exception: ${e.message}", e) }
 }

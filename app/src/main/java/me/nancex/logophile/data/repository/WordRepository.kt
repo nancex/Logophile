@@ -10,6 +10,20 @@ import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.remote.IcibaMean
 import me.nancex.logophile.data.remote.NetworkClient
 import kotlinx.coroutines.flow.Flow
+import retrofit2.HttpException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+
+data class DefinitionResult(
+    val phonetic: String? = null,
+    val definitionJson: String? = null,
+    val audioUrl: String? = null
+)
+
+data class FetchResult(
+    val data: DefinitionResult? = null,
+    val error: String? = null  // null = success
+)
 
 class WordRepository(private val wordDao: WordDao) {
 
@@ -55,22 +69,15 @@ class WordRepository(private val wordDao: WordDao) {
         try {
             val externalWords = externalDb.wordDao().getAllWords()
             Log.d(TAG, "importFromFile: found ${externalWords.size} words in external DB")
-            externalWords.forEachIndexed { i, w ->
-                Log.d(TAG, "importFromFile: [$i] id=${w.id} word='${w.word}' lang=${w.language} addedTime=${w.addedTime}")
-            }
             for (externalWord in externalWords) {
                 val existing = wordDao.findByWordAndLanguage(externalWord.word, externalWord.language)
                 if (existing == null) {
                     wordDao.insert(externalWord)
                     importedCount++
-                    Log.d(TAG, "importFromFile: INSERTED '${externalWord.word}'")
                 } else if (externalWord.addedTime > existing.addedTime) {
                     wordDao.deleteById(existing.id)
                     wordDao.insert(externalWord.copy(id = 0))
                     importedCount++
-                    Log.d(TAG, "importFromFile: REPLACED '${externalWord.word}' (newer)")
-                } else {
-                    Log.d(TAG, "importFromFile: SKIPPED '${externalWord.word}' (existing newer)")
                 }
             }
         } finally {
@@ -80,7 +87,7 @@ class WordRepository(private val wordDao: WordDao) {
         return importedCount
     }
 
-    suspend fun fetchWordDefinition(word: String): Triple<String?, String?, String?>? {
+    suspend fun fetchWordDefinition(word: String): FetchResult {
         return try {
             val icibaResponse = NetworkClient.icibaApi.getWordSuggest(word = word)
             val dictResponse = NetworkClient.dictionaryApi.getWordEntry(word)
@@ -100,10 +107,19 @@ class WordRepository(private val wordDao: WordDao) {
                     if (!p.text.isNullOrEmpty() && phonetic == null) phonetic = p.text
                 }
             }
-            Triple(phonetic, definitionJson, audioUrl)
+            FetchResult(data = DefinitionResult(phonetic, definitionJson, audioUrl))
+        } catch (e: UnknownHostException) {
+            Log.e(TAG, "fetchWordDefinition: no network for '$word'")
+            FetchResult(error = "No network connection")
+        } catch (e: SocketTimeoutException) {
+            Log.e(TAG, "fetchWordDefinition: timeout for '$word'")
+            FetchResult(error = "Connection timed out")
+        } catch (e: HttpException) {
+            Log.e(TAG, "fetchWordDefinition: HTTP ${e.code()} for '$word'")
+            FetchResult(error = "Server error (HTTP ${e.code()})")
         } catch (e: Exception) {
             Log.e(TAG, "fetchWordDefinition: failed for '$word': ${e.message}", e)
-            null
+            FetchResult(error = "Error: ${e.message}")
         }
     }
 
