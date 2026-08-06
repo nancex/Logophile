@@ -255,11 +255,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showTip() {
         val current = _memoryState.value.currentWord ?: return
+        if (_memoryState.value.isShowingTip) return
         _memoryState.value = _memoryState.value.copy(isShowingTip = true)
         viewModelScope.launch {
-            repository.incrementTipCount(current.id)
-            _toastEvent.value = ToastEvent(current.word, "tip")
-        }
+            val fresh = repository.getWordById(current.id) ?: return@launch
+            if (fresh.tipCount < fresh.passCount) {
+                repository.incrementTipCount(current.id)
+                _toastEvent.value = ToastEvent(current.word, "tip")
+            }
+            }
         viewModelScope.launch { saveState() }
     }
 
