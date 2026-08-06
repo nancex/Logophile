@@ -90,13 +90,13 @@ class MemoryEngine {
     // ── Steps 4-6: pick from non-queue pool ────────────────────────
 
     private fun pickFromNonQueue(pool: List<WordEntry>): WordEntry {
-        // Precompute zero-pass words once (O(n), not repeated in the loop)
-        val zeroPass = pool.filter { it.passCount == 0 }
+        // Precompute zero-delta words once (O(n), not repeated in the loop)
+        val zeroDelta = pool.filter { (it.passCount - it.tipCount) == 0 }
 
         var attempts = 0
         while (attempts < MAX_DEDUP_ATTEMPTS) {
             attempts++
-            val candidate = if (zeroPass.isNotEmpty()) zeroPass.random() else pickByRejection(pool)
+            val candidate = if (zeroDelta.isNotEmpty()) zeroDelta.random() else pickByRejection(pool)
 
             if (recentQueue.none { it.id == candidate.id }) {
                 recentQueue.add(candidate)
