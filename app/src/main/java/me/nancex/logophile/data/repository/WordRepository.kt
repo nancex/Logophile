@@ -7,6 +7,7 @@ import com.google.gson.Gson
 import me.nancex.logophile.data.local.AppDatabase
 import me.nancex.logophile.data.local.WordDao
 import me.nancex.logophile.data.local.WordEntry
+import me.nancex.logophile.data.remote.DictionaryResponseItem
 import me.nancex.logophile.data.remote.IcibaMean
 import me.nancex.logophile.data.remote.NetworkClient
 import kotlinx.coroutines.flow.Flow
@@ -22,13 +23,14 @@ data class DefinitionResult(
 
 data class FetchResult(
     val data: DefinitionResult? = null,
-    val error: String? = null  // null = success
+    val error: String? = null
 )
 
 class WordRepository(private val wordDao: WordDao) {
 
     companion object {
         private const val TAG = "WordRepository"
+        private const val DICT_MAX_RETRIES = 10
     }
 
     private val gson = Gson()
@@ -44,6 +46,7 @@ class WordRepository(private val wordDao: WordDao) {
     suspend fun deleteWordById(id: Int) = wordDao.deleteById(id)
     suspend fun incrementPassCount(id: Int) = wordDao.incrementPassCount(id)
     suspend fun incrementTipCount(id: Int) = wordDao.incrementTipCount(id)
+    suspend fun setTipCount(id: Int, count: Int) = wordDao.setTipCount(id, count)
     suspend fun resetAllCounts() = wordDao.resetAllCounts()
     suspend fun getWordCount(): Int = wordDao.getWordCount()
     suspend fun getAllWordsList(): List<WordEntry> = wordDao.getAllWords()
@@ -70,13 +73,18 @@ class WordRepository(private val wordDao: WordDao) {
             val externalWords = externalDb.wordDao().getAllWords()
             Log.d(TAG, "importFromFile: found ${externalWords.size} words in external DB")
             for (externalWord in externalWords) {
-                val existing = wordDao.findByWordAndLanguage(externalWord.word, externalWord.language)
+                val clamped = if (externalWord.tipCount > externalWord.passCount) {
+                    Log.d(TAG, "importFromFile: clamping tipCount for '${externalWord.word}' (${externalWord.tipCount} -> ${externalWord.passCount})")
+                    externalWord.copy(tipCount = externalWord.passCount)
+                } else externalWord
+
+                val existing = wordDao.findByWordAndLanguage(clamped.word, clamped.language)
                 if (existing == null) {
-                    wordDao.insert(externalWord)
+                    wordDao.insert(clamped)
                     importedCount++
-                } else if (externalWord.addedTime > existing.addedTime) {
+                } else if (clamped.addedTime > existing.addedTime) {
                     wordDao.deleteById(existing.id)
-                    wordDao.insert(externalWord.copy(id = 0))
+                    wordDao.insert(clamped.copy(id = 0))
                     importedCount++
                 }
             }
@@ -87,10 +95,12 @@ class WordRepository(private val wordDao: WordDao) {
         return importedCount
     }
 
-    suspend fun fetchWordDefinition(word: String): FetchResult {
+    suspend fun fetchWordDefinition(word: String, onDictRetry: suspend (retry: Int, max: Int) -> Unit = { _, _ -> }): FetchResult {
         return try {
             val icibaResponse = NetworkClient.icibaApi.getWordSuggest(word = word)
-            val dictResponse = NetworkClient.dictionaryApi.getWordEntry(word)
+            val dictResponse = fetchDictWithRetry(word, onDictRetry)
+                ?: return FetchResult(error = "dictionaryapi 502 after $DICT_MAX_RETRIES retries")
+
             var definitionJson: String? = null
             if (icibaResponse.status == 1 && !icibaResponse.message.isNullOrEmpty()) {
                 val msg = icibaResponse.message[0]
@@ -109,18 +119,31 @@ class WordRepository(private val wordDao: WordDao) {
             }
             FetchResult(data = DefinitionResult(phonetic, definitionJson, audioUrl))
         } catch (e: UnknownHostException) {
-            Log.e(TAG, "fetchWordDefinition: no network for '$word'")
             FetchResult(error = "No network connection")
         } catch (e: SocketTimeoutException) {
-            Log.e(TAG, "fetchWordDefinition: timeout for '$word'")
             FetchResult(error = "Connection timed out")
         } catch (e: HttpException) {
-            Log.e(TAG, "fetchWordDefinition: HTTP ${e.code()} for '$word'")
             FetchResult(error = "Server error (HTTP ${e.code()})")
         } catch (e: Exception) {
-            Log.e(TAG, "fetchWordDefinition: failed for '$word': ${e.message}", e)
             FetchResult(error = "Error: ${e.message}")
         }
+    }
+
+    private suspend fun fetchDictWithRetry(word: String, onRetry: suspend (retry: Int, max: Int) -> Unit): List<DictionaryResponseItem>? {
+        var retries = 0
+        while (retries < DICT_MAX_RETRIES) {
+            try {
+                return NetworkClient.dictionaryApi.getWordEntry(word)
+            } catch (e: HttpException) {
+                if (e.code() == 502) {
+                    retries++
+                    onRetry(retries, DICT_MAX_RETRIES)
+                    continue
+                }
+                throw e
+            }
+        }
+        return null
     }
 
     fun parseDefinitionToDisplayText(definitionJson: String?): List<Pair<String, String>> {

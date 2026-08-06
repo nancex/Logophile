@@ -3,6 +3,7 @@ package me.nancex.logophile.ui.theme
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -28,6 +29,7 @@ class SettingsManager(private val context: Context) {
         val MEMORY_QUEUE_KEY = stringPreferencesKey("memory_queue")
         val MEMORY_PREVIOUS_KEY = stringPreferencesKey("memory_previous")
         val MEMORY_FORWARD_KEY = stringPreferencesKey("memory_forward")
+        val MEMORY_TIP_SHOWN_KEY = booleanPreferencesKey("memory_tip_shown")
     }
 
     val themeFlow: Flow<AppTheme> = context.dataStore.data.map { prefs ->
@@ -46,20 +48,16 @@ class SettingsManager(private val context: Context) {
     val orderFlow: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[ORDER_KEY] ?: "alpha"
     }
-
     val modeFlow: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[MODE_KEY] ?: "word"
     }
-
     val wordSortDirFlow: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[WORD_SORT_DIR_KEY] ?: "asc"
     }
-
     val wordTimeRangeFlow: Flow<TimeRange> = context.dataStore.data.map { prefs ->
         val key = prefs[WORD_TIME_RANGE_KEY] ?: TimeRange.ALL.key
         TimeRange.entries.find { it.key == key } ?: TimeRange.ALL
     }
-
     val memoryTimeRangeFlow: Flow<TimeRange> = context.dataStore.data.map { prefs ->
         val key = prefs[MEMORY_TIME_RANGE_KEY] ?: TimeRange.ALL.key
         TimeRange.entries.find { it.key == key } ?: TimeRange.ALL
@@ -71,16 +69,18 @@ class SettingsManager(private val context: Context) {
             currentId = prefs[MEMORY_CURRENT_ID_KEY] ?: -1,
             queueIds = prefs[MEMORY_QUEUE_KEY]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
             previousIds = prefs[MEMORY_PREVIOUS_KEY]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
-            forwardIds = prefs[MEMORY_FORWARD_KEY]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList()
+            forwardIds = prefs[MEMORY_FORWARD_KEY]?.split(",")?.mapNotNull { it.toIntOrNull() } ?: emptyList(),
+            tipWasShown = prefs[MEMORY_TIP_SHOWN_KEY] ?: false
         )
     }
 
-    suspend fun saveMemoryState(currentId: Int, queueIds: List<Int>, previousIds: List<Int>, forwardIds: List<Int>) {
+    suspend fun saveMemoryState(currentId: Int, queueIds: List<Int>, previousIds: List<Int>, forwardIds: List<Int>, tipWasShown: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[MEMORY_CURRENT_ID_KEY] = currentId
             prefs[MEMORY_QUEUE_KEY] = queueIds.joinToString(",")
             prefs[MEMORY_PREVIOUS_KEY] = previousIds.joinToString(",")
             prefs[MEMORY_FORWARD_KEY] = forwardIds.joinToString(",")
+            prefs[MEMORY_TIP_SHOWN_KEY] = tipWasShown
         }
     }
 
@@ -90,37 +90,31 @@ class SettingsManager(private val context: Context) {
             prefs.remove(MEMORY_QUEUE_KEY)
             prefs.remove(MEMORY_PREVIOUS_KEY)
             prefs.remove(MEMORY_FORWARD_KEY)
+            prefs.remove(MEMORY_TIP_SHOWN_KEY)
         }
     }
 
     suspend fun setTheme(theme: AppTheme) {
         context.dataStore.edit { prefs -> prefs[THEME_KEY] = theme.ordinal }
     }
-
     suspend fun setFont(font: AppFont) {
         context.dataStore.edit { prefs -> prefs[FONT_KEY] = font.ordinal }
     }
-
     suspend fun setLanguage(language: AppLanguage) {
         context.dataStore.edit { prefs -> prefs[LANGUAGE_KEY] = language.code }
     }
-
     suspend fun setOrder(order: String) {
         context.dataStore.edit { prefs -> prefs[ORDER_KEY] = order }
     }
-
     suspend fun setMode(mode: String) {
         context.dataStore.edit { prefs -> prefs[MODE_KEY] = mode }
     }
-
     suspend fun setWordSortDir(dir: String) {
         context.dataStore.edit { prefs -> prefs[WORD_SORT_DIR_KEY] = dir }
     }
-
     suspend fun setWordTimeRange(range: TimeRange) {
         context.dataStore.edit { prefs -> prefs[WORD_TIME_RANGE_KEY] = range.key }
     }
-
     suspend fun setMemoryTimeRange(range: TimeRange) {
         context.dataStore.edit { prefs -> prefs[MEMORY_TIME_RANGE_KEY] = range.key }
     }
@@ -130,5 +124,6 @@ data class SavedMemoryState(
     val currentId: Int,
     val queueIds: List<Int>,
     val previousIds: List<Int>,
-    val forwardIds: List<Int>
+    val forwardIds: List<Int>,
+    val tipWasShown: Boolean
 )

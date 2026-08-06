@@ -45,6 +45,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val MAX_PREVIOUS = 2
     }
 
+    private val app = application
     private val repository = (application as LogophileApp).repository
     private val engine = MemoryEngine()
     private val settingsManager = SettingsManager(application)
@@ -117,7 +118,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val idx = filtered.indexOfFirst { it.id == currentWord.id }.coerceAtLeast(0)
             _memoryState.value = _memoryState.value.copy(
                 currentWord = currentWord, wordCount = filtered.size,
-                currentIndex = idx, hasPrevious = previousWords.isNotEmpty())
+                currentIndex = idx, hasPrevious = previousWords.isNotEmpty(),
+                isShowingTip = saved.tipWasShown)
         } else {
             val filtered = filterByTimeRange(words)
             if (filtered.isNotEmpty()) {
@@ -129,11 +131,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun saveState() {
         viewModelScope.launch {
+            val current = _memoryState.value
             settingsManager.saveMemoryState(
-                currentId = _memoryState.value.currentWord?.id ?: -1,
+                currentId = current.currentWord?.id ?: -1,
                 queueIds = engine.getQueueIds(),
                 previousIds = previousWords.map { it.id },
-                forwardIds = forwardWords.map { it.id })
+                forwardIds = forwardWords.map { it.id },
+                tipWasShown = current.isShowingTip)
         }
     }
 
@@ -174,7 +178,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     audioUrl = null, searchedWord = word, wasModifiedAfterSearch = false)
                 return@launch
             }
-            val result = repository.fetchWordDefinition(word.lowercase())
+            val result = repository.fetchWordDefinition(word.lowercase()) { retry, max ->
+                _addWordState.value = _addWordState.value.copy(
+                    errorMessage = app.getString(R.string.dict_retrying, retry, max)
+                )
+            }
             if (result.error != null) {
                 _addWordState.value = _addWordState.value.copy(
                     isLoading = false,
@@ -239,6 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val current = _memoryState.value.currentWord ?: return
         _memoryState.value = _memoryState.value.copy(isShowingTip = true)
         viewModelScope.launch { repository.incrementTipCount(current.id) }
+        viewModelScope.launch { saveState() }
     }
 
     fun showPrevious() {

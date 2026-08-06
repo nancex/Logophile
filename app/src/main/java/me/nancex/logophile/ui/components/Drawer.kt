@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ fun LogophileDrawer(
     onSettingsClick: () -> Unit,
     onImportExportClick: () -> Unit,
     onAboutClick: () -> Unit,
+    versionError: String? = null,
     content: @Composable () -> Unit
 ) {
     ModalNavigationDrawer(
@@ -89,12 +91,23 @@ fun LogophileDrawer(
 
                     Spacer(modifier = Modifier.weight(1f))
 
+                    if (versionError != null) {
+                        Text(
+                            text = versionError,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFEF5350),
+                            modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
+
                     Text(
                         text = "v0.1.0",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.End).padding(16.dp)
+                        modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp, vertical = 2.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         },

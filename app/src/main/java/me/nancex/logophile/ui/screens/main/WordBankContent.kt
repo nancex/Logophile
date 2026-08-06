@@ -109,6 +109,15 @@ fun WordBankContent(
     val sheetState = rememberModalBottomSheetState()
     val listState = rememberLazyListState()
 
+    LaunchedEffect(sheetWord) {
+        val w = sheetWord ?: return@LaunchedEffect
+        val delta = w.passCount - w.tipCount
+        val newTip = if (delta > 2) (w.passCount - 2).coerceAtLeast(0) else (w.tipCount + 1).coerceAtMost(w.passCount)
+        if (newTip != w.tipCount) {
+            app.repository.setTipCount(w.id, newTip)
+        }
+    }
+
     LaunchedEffect(order, sortDir, mode, wordTimeRange) {
         listState.scrollToItem(0)
     }

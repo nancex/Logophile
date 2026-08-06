@@ -1,10 +1,13 @@
 package me.nancex.logophile.ui.screens.main
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -12,7 +15,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.nancex.logophile.R
+import me.nancex.logophile.data.remote.VersionCheckResult
+import me.nancex.logophile.data.remote.VersionChecker
 import me.nancex.logophile.ui.components.BottomNavTab
 import me.nancex.logophile.ui.components.LogophileBottomBar
 import me.nancex.logophile.ui.components.LogophileDrawer
@@ -54,11 +61,29 @@ fun MainScreen(
     val repository = (context.applicationContext as me.nancex.logophile.LogophileApp).repository
     val settingsManager = remember { SettingsManager(context) }
 
+    var versionError by remember { mutableStateOf<String?>(null) }
+    var showUpdateDialog by remember { mutableStateOf<VersionCheckResult.UpdateAvailable?>(null) }
+    val versionName = remember {
+        try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0.0" }
+        catch (e: Exception) { "0.0.0" }
+    }
+
+    val versionErrorText = stringResource(R.string.version_error)
+
+    LaunchedEffect(Unit) {
+        when (val result = VersionChecker.check(context)) {
+            is VersionCheckResult.UpdateAvailable -> showUpdateDialog = result
+            is VersionCheckResult.Error -> versionError = versionErrorText
+            else -> {}
+        }
+    }
+
     LogophileDrawer(
         drawerState = drawerState, scope = scope,
         onSettingsClick = onNavigateToSettings,
         onImportExportClick = onNavigateToImportExport,
-        onAboutClick = onNavigateToAbout
+        onAboutClick = onNavigateToAbout,
+        versionError = versionError
     ) {
         Scaffold(
             topBar = {
@@ -151,6 +176,28 @@ fun MainScreen(
             onSearch = { viewModel.fetchWordDefinition() },
             onAdd = { viewModel.addWord(); showAddWordDialog = false },
             onDismiss = { viewModel.clearAddWordState(); showAddWordDialog = false }
+        )
+    }
+
+    showUpdateDialog?.let { update ->
+        AlertDialog(
+            onDismissRequest = { showUpdateDialog = null },
+            title = { Text(stringResource(R.string.update_available_title)) },
+            text = { Text(stringResource(R.string.update_available_message, update.latestVersion, versionName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUpdateDialog = null
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                    context.startActivity(intent)
+                }) {
+                    Text(stringResource(R.string.update_download))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpdateDialog = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 }

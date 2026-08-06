@@ -52,6 +52,9 @@ interface WordDao {
     @Query("UPDATE words SET tip_count = tip_count + 1 WHERE id = :id")
     suspend fun incrementTipCount(id: Int)
 
+    @Query("UPDATE words SET tip_count = :count WHERE id = :id")
+    suspend fun setTipCount(id: Int, count: Int)
+
     @Query("UPDATE words SET pass_count = 0, tip_count = 0")
     suspend fun resetAllCounts()
 
