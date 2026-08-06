@@ -2,6 +2,8 @@
 
 # Logophile
 
+![app_logo](app/src/main/res/mipmap-xxxhdpi/ic_launcher.png)
+
 Do you love language?
 
 Do you enjoy collecting those second-most-common words?
