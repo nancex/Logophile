@@ -14,6 +14,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,16 +54,19 @@ fun MainScreen(
     viewModel: MainViewModel = viewModel()
 ) {
     val memoryState by viewModel.memoryState.collectAsState()
+    val toastEvent by viewModel.toastEvent.collectAsState()
     var selectedTab by remember { mutableStateOf(BottomNavTab.MEMORY) }
     var showAddWordDialog by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = remember {
         androidx.compose.material3.DrawerState(androidx.compose.material3.DrawerValue.Closed)
     }
     val context = LocalContext.current
     val repository = (context.applicationContext as me.nancex.logophile.LogophileApp).repository
     val settingsManager = remember { SettingsManager(context) }
+    val devMode by settingsManager.devModeFlow.collectAsState(initial = false)
 
     var versionError by remember { mutableStateOf<String?>(null) }
     var showUpdateDialog by remember { mutableStateOf<VersionCheckResult.UpdateAvailable?>(null) }
@@ -78,6 +85,22 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(toastEvent) {
+        val event = toastEvent ?: return@LaunchedEffect
+        if (devMode) {
+            val message = if (event.countType == "pass") {
+                context.getString(R.string.toast_pass, event.word)
+            } else {
+                context.getString(R.string.toast_tip, event.word)
+            }
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+        }
+        viewModel.clearToast()
+    }
+
     LogophileDrawer(
         drawerState = drawerState, scope = scope,
         onSettingsClick = onNavigateToSettings,
@@ -87,6 +110,7 @@ fun MainScreen(
         versionError = versionError
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 LogophileTopBar(
                     title = when (selectedTab) {

@@ -30,6 +30,7 @@ class SettingsManager(private val context: Context) {
         val MEMORY_PREVIOUS_KEY = stringPreferencesKey("memory_previous")
         val MEMORY_FORWARD_KEY = stringPreferencesKey("memory_forward")
         val MEMORY_TIP_SHOWN_KEY = booleanPreferencesKey("memory_tip_shown")
+        val DEV_MODE_KEY = booleanPreferencesKey("dev_mode")
     }
 
     val themeFlow: Flow<AppTheme> = context.dataStore.data.map { prefs ->
@@ -61,6 +62,9 @@ class SettingsManager(private val context: Context) {
     val memoryTimeRangeFlow: Flow<TimeRange> = context.dataStore.data.map { prefs ->
         val key = prefs[MEMORY_TIME_RANGE_KEY] ?: TimeRange.ALL.key
         TimeRange.entries.find { it.key == key } ?: TimeRange.ALL
+    }
+    val devModeFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[DEV_MODE_KEY] ?: false
     }
 
     suspend fun getMemoryState(): SavedMemoryState {
@@ -117,6 +121,9 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun setMemoryTimeRange(range: TimeRange) {
         context.dataStore.edit { prefs -> prefs[MEMORY_TIME_RANGE_KEY] = range.key }
+    }
+    suspend fun setDevMode(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[DEV_MODE_KEY] = enabled }
     }
 }
 

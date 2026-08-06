@@ -39,6 +39,11 @@ data class MemoryState(
     val timeRange: TimeRange = TimeRange.ALL
 )
 
+data class ToastEvent(
+    val word: String,
+    val countType: String  // "pass" or "tip"
+)
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
@@ -56,6 +61,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _memoryState = MutableStateFlow(MemoryState())
     val memoryState: StateFlow<MemoryState> = _memoryState.asStateFlow()
+
+    private val _toastEvent = MutableStateFlow<ToastEvent?>(null)
+    val toastEvent: StateFlow<ToastEvent?> = _toastEvent.asStateFlow()
 
     private var wordList: List<WordEntry> = emptyList()
     private val previousWords = mutableListOf<WordEntry>()
@@ -225,6 +233,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 repository.incrementPassCount(current.id)
                 engine.enqueueIfTipShown(current, tipWasShown)
                 forwardWords.clear()
+                _toastEvent.value = ToastEvent(current.word, "pass")
             }
             previousWords.add(current)
             while (previousWords.size > MAX_PREVIOUS) { previousWords.removeAt(0) }
@@ -247,7 +256,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun showTip() {
         val current = _memoryState.value.currentWord ?: return
         _memoryState.value = _memoryState.value.copy(isShowingTip = true)
-        viewModelScope.launch { repository.incrementTipCount(current.id) }
+        viewModelScope.launch {
+            repository.incrementTipCount(current.id)
+            _toastEvent.value = ToastEvent(current.word, "tip")
+        }
         viewModelScope.launch { saveState() }
     }
 
@@ -297,5 +309,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             previousWords.removeAll { it.id == word.id }
             saveState()
         }
+    }
+
+    fun clearToast() {
+        _toastEvent.value = null
     }
 }

@@ -5,6 +5,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +33,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -147,6 +151,26 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 },
                 onSelect = { scope.launch { settingsManager.setTheme(it) } }
             )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SettingsSectionTitle(title = stringResource(R.string.settings_dev_mode))
+            val devMode by settingsManager.devModeFlow.collectAsState(initial = false)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_dev_mode),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Switch(
+                    checked = devMode,
+                    onCheckedChange = { enabled -> scope.launch { settingsManager.setDevMode(enabled) } }
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(modifier = Modifier.height(16.dp))

@@ -79,4 +79,7 @@
     <string name="import_fail">导入失败：%1$s</string>
     <string name="sort">排序</string>
     <string name="more">更多</string>
+    <string name="settings_dev_mode">开发者模式</string>
+    <string name="toast_pass">%1$s pass_count + 1</string>
+    <string name="toast_tip">%1$s tip_count + 1</string>
 </resources>

@@ -101,6 +101,7 @@ fun WordBankContent(
     val mode by settingsManager.modeFlow.collectAsState(initial = "word")
     val sortDir by settingsManager.wordSortDirFlow.collectAsState(initial = "asc")
     val wordTimeRange by settingsManager.wordTimeRangeFlow.collectAsState(initial = TimeRange.ALL)
+    val devMode by settingsManager.devModeFlow.collectAsState(initial = false)
     val alphaOrder = order == "alpha"
     val sortAsc = sortDir == "asc"
     val searchMode = if (mode == "word") SearchMode.BY_WORD else SearchMode.BY_DEFINITION
@@ -270,6 +271,7 @@ fun WordBankContent(
             items(displayedWords, key = { it.id }) { word ->
                 WordListItem(
                     word = word, fontFamily = wordFont, fontSizeMultiplier = fontSizeMul,
+                    showDevInfo = devMode,
                     onClick = { sheetWord = word },
                     onPlayAudio = { playAudio(word.audioUrl) }
                 )
@@ -318,6 +320,7 @@ fun WordListItem(
     word: WordEntry,
     fontFamily: FontFamily = FontFamily.Default,
     fontSizeMultiplier: Float = 1f,
+    showDevInfo: Boolean = false,
     onClick: () -> Unit,
     onPlayAudio: () -> Unit
 ) {
@@ -347,6 +350,20 @@ fun WordListItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (showDevInfo) {
+                    Text(
+                        text = word.passCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                    Text(
+                        text = word.tipCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                }
                 IconButton(onClick = onPlayAudio, enabled = !word.audioUrl.isNullOrEmpty(),
                     modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Filled.VolumeUp, contentDescription = stringResource(R.string.play_audio),
