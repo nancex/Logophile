@@ -12,6 +12,7 @@ import me.nancex.logophile.LogophileApp
 import me.nancex.logophile.data.local.WordEntry
 import me.nancex.logophile.data.repository.WordRepository
 import me.nancex.logophile.ui.theme.SettingsManager
+import me.nancex.logophile.R
 import me.nancex.logophile.ui.theme.TimeRange
 
 data class AddWordState(

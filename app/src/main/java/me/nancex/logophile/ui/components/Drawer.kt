@@ -38,6 +38,7 @@ fun LogophileDrawer(
     onSettingsClick: () -> Unit,
     onImportExportClick: () -> Unit,
     onAboutClick: () -> Unit,
+    versionName: String = "",
     versionError: String? = null,
     content: @Composable () -> Unit
 ) {
@@ -101,7 +102,7 @@ fun LogophileDrawer(
                     }
 
                     Text(
-                        text = "v0.1.0",
+                        text = "v$versionName",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp, vertical = 2.dp)

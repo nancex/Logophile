@@ -83,6 +83,7 @@ fun MainScreen(
         onSettingsClick = onNavigateToSettings,
         onImportExportClick = onNavigateToImportExport,
         onAboutClick = onNavigateToAbout,
+        versionName = versionName,
         versionError = versionError
     ) {
         Scaffold(
